@@ -1,7 +1,7 @@
-# CubeLink Starter Web
+# CubeLink Starter Web 1.2.0
 
-Public classroom deployment of CubeLink Starter 1.2.0. Uses real Blockly interlocking blocks.
+Public classroom web app with real Blockly interlocking blocks.
 
-Development source and preserved Git history are managed separately in CubeLink-Starter.
+https://eoreum.github.io/CubeLink-Starter-Web/
 
-Open the published web app in desktop Chrome or Edge. Browser simulation does not control physical hardware; export .ino and upload through Arduino IDE.
+Source and preserved history are managed separately in eoreum/CubeLink-Starter. See THIRD_PARTY_NOTICES.md and vendor/LICENSE.

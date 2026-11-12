@@ -8,9 +8,7 @@ export function registerBlocks(B,getBoard){
    const dropdown=(field,options)=>new B.FieldDropdown(options);
    const pin=(name,analog=false)=>{const f=new B.FieldDropdown(function(){const values=pins(getBoard(),analog);for(const value of [this.getValue(),this.getSourceBlock()?.starterPinOverrides?.[name]])if(value&&!values.includes(String(value)))values.push(String(value));return values.map(p=>[p,p])});row.appendField(f,name)};
    switch(type){
-   case 'servoAttach':row.appendField('서보 신호 핀');pin('pin');row.appendField('연결 attach');break;
-   case 'servo':row.appendField('서보 핀');pin('pin');row.appendField(dropdown('source',[['직접 각도','angle'],['읽은 값 value','value']]),'source').appendField(new B.FieldNumber(45,0,180,1),'angle').appendField('도 / 제한').appendField(new B.FieldNumber(0,0,180,1),'min').appendField('~').appendField(new B.FieldNumber(180,0,180,1),'max');break;
-   case 'servoCondition':row.appendField('유효 거리 ≤').appendField(new B.FieldNumber(15,0,400),'threshold').appendField('cm이면 서보');pin('pin');row.appendField(new B.FieldNumber(50,0,180,1),'near').appendField('도, 아니면').appendField(new B.FieldNumber(120,0,180,1),'far').appendField('도');break;
+   case 'distanceLed':row.appendField('유효 거리 <').appendField(new B.FieldNumber(20,0,400),'threshold').appendField('cm이면 LED');pin('pin');row.appendField('켜기, 아니면 끄기');break;
    case 'mapValue':row.appendField('value 범위').appendField(new B.FieldNumber(0,-10000,10000,1),'inMin').appendField('~').appendField(new B.FieldNumber(1023,-10000,10000,1),'inMax').appendField('→').appendField(new B.FieldNumber(0,-10000,10000,1),'outMin').appendField('~').appendField(new B.FieldNumber(180,-10000,10000,1),'outMax');break;
    case 'increment':row.appendField('counter를').appendField(new B.FieldNumber(1,-1000,1000,1),'step').appendField('증가 → value');break;
    case 'mode':row.appendField('핀');pin('pin');row.appendField('을').appendField(dropdown('mode',[['출력 OUTPUT','OUTPUT'],['입력 INPUT','INPUT'],['내장 풀업 입력','INPUT_PULLUP']]),'mode').appendField('으로 설정');break;
@@ -46,8 +44,7 @@ export function fromModel(B,workspace,project){
 export function connectedIds(workspace,section){const root=workspace.getBlocksByType('starter_root',false)[0],ids=[];let b=root?.getInputTargetBlock(section.toUpperCase());while(b){if(b.isEnabled())ids.push(b.id);b=b.getNextBlock()}return ids}
 export function orphanCount(workspace){return workspace.getTopBlocks(false).filter(b=>b.type!=='starter_root').reduce((n,b)=>n+b.getDescendants(false).length,0)}
 export function toolbox(){return {kind:'categoryToolbox',contents:[
- {kind:'category',name:'입출력',colour:'#E74C3C',contents:['mode','write','led','threshold','read','button'].map(type=>({kind:'block',type:'starter_'+type}))},
+ {kind:'category',name:'입출력',colour:'#E74C3C',contents:['mode','write','led','threshold','distanceLed','read','button'].map(type=>({kind:'block',type:'starter_'+type}))},
  {kind:'category',name:'센서',colour:'#16A085',contents:['analog','ldr','pot','ultrasonic'].map(type=>({kind:'block',type:'starter_'+type}))},
- {kind:'category',name:'서보 · 로봇팔',colour:'#8E5DB7',contents:['servoAttach','servo','servoCondition'].map(type=>({kind:'block',type:'starter_'+type}))},
  {kind:'category',name:'시간 · 시리얼',colour:'#D4AF37',contents:['delay','print','increment','mapValue'].map(type=>({kind:'block',type:'starter_'+type}))}
  ]}}

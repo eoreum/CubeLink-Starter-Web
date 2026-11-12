@@ -26,7 +26,7 @@ function resistor(x,y,vertical=false,label='220~330Ω') {
  return '<g transform="translate('+x+' '+y+')'+(vertical?' rotate(90)':'')+'">'+shape+'</g>'+svgText(x-35,y+(vertical?60:-18),label,14);
 }
 function boardPicture(y,nets,name) {
- let s='<g data-board-picture="true"><rect x="40" y="'+(y+70)+'" width="290" height="235" rx="18" fill="#087f8c" stroke="#075b65" stroke-width="3"/><rect x="24" y="'+(y+110)+'" width="50" height="64" rx="5" fill="#c6d0d7" stroke="#8397a3"/><rect x="90" y="'+(y+155)+'" width="95" height="72" rx="4" fill="#26343c"/><path d="M100 '+(y+145)+' V155 M120 '+(y+145)+' V155 M140 '+(y+145)+' V155 M160 '+(y+145)+' V155 M100 '+(y+227)+' V237 M120 '+(y+227)+' V237 M140 '+(y+227)+' V237 M160 '+(y+227)+' V237" stroke="#b4bfc3" stroke-width="5"/>';
+ let s='<g data-board-picture="true"><rect x="40" y="'+(y+70)+'" width="290" height="235" rx="18" fill="#087f8c" stroke="#075b65" stroke-width="3"/><rect x="24" y="'+(y+110)+'" width="50" height="64" rx="5" fill="#c6d0d7" stroke="#8397a3"/><rect x="90" y="'+(y+155)+'" width="95" height="72" rx="4" fill="#26343c"/><path d="M100 '+(y+145)+' V'+(y+155)+' M120 '+(y+145)+' V'+(y+155)+' M140 '+(y+145)+' V'+(y+155)+' M160 '+(y+145)+' V'+(y+155)+' M100 '+(y+227)+' V'+(y+237)+' M120 '+(y+227)+' V'+(y+237)+' M140 '+(y+227)+' V'+(y+237)+' M160 '+(y+227)+' V'+(y+237)+'" stroke="#b4bfc3" stroke-width="5"/>';
  s+=svgText(85,y+106,'ARDUINO',23,'white')+svgText(85,y+133,name,15,'#d3eff0')+svgText(85,y+277,'USB / 5V / GND',14,'white');
  const ports=nets.map((n,i)=>({x:330,y:y+105+i*43}));
  ports.forEach((p,i)=>{s+='<rect x="215" y="'+(p.y-15)+'" width="112" height="30" rx="4" fill="#183840"/>'+svgText(227,p.y+6,nets[i].source,16,'white')+'<circle cx="330" cy="'+p.y+'" r="6" fill="'+nets[i].color+'" stroke="white" stroke-width="2"/>';});
@@ -85,3 +85,4 @@ export function renderWiring(svg,project,title) {
  const result=wiringSvg(project,title);svg.setAttribute('viewBox','0 0 1100 '+result.height);svg.innerHTML=result.body;
  svg.setAttribute('aria-label',title+' · '+(result.plan.components.map(c=>c.label).join(', ')||'USB 연결'));
 }
+

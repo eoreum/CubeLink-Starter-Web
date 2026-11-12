@@ -3,6 +3,7 @@ import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from 
 import {initLayout} from './layout.js';
 import {parseProject,serializeProject,STORAGE_KEY} from './project-store.js';
 import {lessons} from './lessons.js';
+import {initCircuitView} from './circuit-view.js';
 const $=id=>document.getElementById(id);
 let project=structuredClone(examples.blink),sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;
 let inputs={analog:{A0:512,A1:512},digital:{},distance:100},logs={sim:[],hardware:[]};
@@ -37,4 +38,4 @@ async function disconnect(){if(closing)return;closing=true;connectionUI();try{if
 async function receive(activePort){const decoder=new TextDecoder();let pending='';try{reader=activePort.readable.getReader();while(true){const {value,done}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});const lines=pending.split(/\r?\n/);pending=lines.pop();lines.forEach(s=>appendLog('hardware',s));if(pending.length>4096){appendLog('hardware',pending);pending=''}}pending+=decoder.decode();if(pending)appendLog('hardware',pending)}catch(err){if(!closing)appendLog('hardware','수신 오류: '+err.message)}finally{reader?.releaseLock();reader=null;if(!closing)await disconnect()}}
 $('serialConnect').onclick=async()=>{if(port){await disconnect();return}if(!('serial'in navigator)||!window.isSecureContext){toast('Web Serial은 데스크톱 Chrome의 HTTPS 또는 localhost가 필요합니다');return}connecting=true;connectionUI();let selected;try{selected=await navigator.serial.requestPort();await selected.open({baudRate:9600});port=selected;writer=port.writable.getWriter();$('monitorSource').value='hardware';appendLog('hardware','── USB 연결 · 9600 baud · 업로드 기능 없음 ──');receive(port)}catch(err){if(selected&&port)await disconnect();toast(err.name==='NotFoundError'?'포트 선택을 취소했습니다':'연결 실패: '+err.message)}finally{connecting=false;connectionUI()}};
 $('sendForm').onsubmit=async e=>{e.preventDefault();if(!writer){toast('실제 USB를 먼저 연결하세요');return}const text=$('serialText').value;try{await writer.write(new TextEncoder().encode(text+'\n'));appendLog('hardware','> '+text);$('serialText').value=''}catch(err){toast('전송 실패: '+err.message)}};
-restore();initEditor();initLayout(workspace);render();showLesson();connectionUI();appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
+initCircuitView();restore();initEditor();initLayout(workspace);render();showLesson();connectionUI();appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');

@@ -8,6 +8,11 @@ export function registerBlocks(B,getBoard){
    const dropdown=(field,options)=>new B.FieldDropdown(options);
    const pin=(name,analog=false)=>{const f=new B.FieldDropdown(function(){const values=pins(getBoard(),analog);for(const value of [this.getValue(),this.getSourceBlock()?.starterPinOverrides?.[name]])if(value&&!values.includes(String(value)))values.push(String(value));return values.map(p=>[p,p])});row.appendField(f,name)};
    switch(type){
+   case 'servoAttach':row.appendField('서보 신호 핀');pin('pin');row.appendField('연결 attach');break;
+   case 'servo':row.appendField('서보 핀');pin('pin');row.appendField(dropdown('source',[['직접 각도','angle'],['읽은 값 value','value']]),'source').appendField(new B.FieldNumber(45,0,180,1),'angle').appendField('도 / 제한').appendField(new B.FieldNumber(0,0,180,1),'min').appendField('~').appendField(new B.FieldNumber(180,0,180,1),'max');break;
+   case 'servoCondition':row.appendField('유효 거리 ≤').appendField(new B.FieldNumber(15,0,400),'threshold').appendField('cm이면 서보');pin('pin');row.appendField(new B.FieldNumber(50,0,180,1),'near').appendField('도, 아니면').appendField(new B.FieldNumber(120,0,180,1),'far').appendField('도');break;
+   case 'mapValue':row.appendField('value 범위').appendField(new B.FieldNumber(0,-10000,10000,1),'inMin').appendField('~').appendField(new B.FieldNumber(1023,-10000,10000,1),'inMax').appendField('→').appendField(new B.FieldNumber(0,-10000,10000,1),'outMin').appendField('~').appendField(new B.FieldNumber(180,-10000,10000,1),'outMax');break;
+   case 'increment':row.appendField('counter를').appendField(new B.FieldNumber(1,-1000,1000,1),'step').appendField('증가 → value');break;
    case 'mode':row.appendField('핀');pin('pin');row.appendField('을').appendField(dropdown('mode',[['출력 OUTPUT','OUTPUT'],['입력 INPUT','INPUT'],['내장 풀업 입력','INPUT_PULLUP']]),'mode').appendField('으로 설정');break;
    case 'write':case 'led':row.appendField(type==='led'?'LED 핀':'디지털 핀');pin('pin');row.appendField('을').appendField(dropdown('state',[['켜기 HIGH','HIGH'],['끄기 LOW','LOW']]),'state').appendField('출력');break;
    case 'threshold':row.appendField('읽은 값이').appendField(dropdown('operator',[['미만 <','<'],['이상 ≥','>=']]),'operator').appendField(new B.FieldNumber(500,-1000000,1000000),'threshold').appendField('이면 LED');pin('pin');row.appendField('켜고 아니면 끄기');break;
@@ -25,7 +30,7 @@ export function registerBlocks(B,getBoard){
 }
 export function toModel(workspace,board){
  const root=workspace.getBlocksByType('starter_root',false)[0];
- const read=name=>{const blocks=[];let b=root?.getInputTargetBlock(name);while(b){if(b.isEnabled()){const type=b.type.replace('starter_','');const result=block(type);for(const field of Object.keys(result).filter(k=>k!=='type'))result[field]=['ms','threshold'].includes(field)?Number(b.getFieldValue(field)):b.getFieldValue(field);blocks.push(result)}b=b.getNextBlock()}return blocks};
+ const read=name=>{const blocks=[];let b=root?.getInputTargetBlock(name);while(b){if(b.isEnabled()){const type=b.type.replace('starter_','');const result=block(type);for(const field of Object.keys(result).filter(k=>k!=='type'))result[field]=['ms','threshold','angle','min','max','near','far','inMin','inMax','outMin','outMax','step'].includes(field)?Number(b.getFieldValue(field)):b.getFieldValue(field);blocks.push(result)}b=b.getNextBlock()}return blocks};
  return {board,setup:read('SETUP'),loop:read('LOOP')};
 }
 export function fromModel(B,workspace,project){
@@ -43,5 +48,6 @@ export function orphanCount(workspace){return workspace.getTopBlocks(false).filt
 export function toolbox(){return {kind:'categoryToolbox',contents:[
  {kind:'category',name:'입출력',colour:'#E74C3C',contents:['mode','write','led','threshold','read','button'].map(type=>({kind:'block',type:'starter_'+type}))},
  {kind:'category',name:'센서',colour:'#16A085',contents:['analog','ldr','pot','ultrasonic'].map(type=>({kind:'block',type:'starter_'+type}))},
- {kind:'category',name:'시간 · 시리얼',colour:'#D4AF37',contents:['delay','print'].map(type=>({kind:'block',type:'starter_'+type}))}
+ {kind:'category',name:'서보 · 로봇팔',colour:'#8E5DB7',contents:['servoAttach','servo','servoCondition'].map(type=>({kind:'block',type:'starter_'+type}))},
+ {kind:'category',name:'시간 · 시리얼',colour:'#D4AF37',contents:['delay','print','increment','mapValue'].map(type=>({kind:'block',type:'starter_'+type}))}
  ]}}

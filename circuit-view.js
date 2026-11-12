@@ -9,7 +9,7 @@ export function initCircuitView() {
     if (!dialog.open) return;
     const svg=source.cloneNode(true);
     svg.removeAttribute('id');svg.removeAttribute('tabindex');
-    svg.setAttribute('role','img');svg.setAttribute('aria-label','확대된 LED 개념 회로');
+    svg.setAttribute('role','img');svg.setAttribute('aria-label',source.getAttribute('aria-label')||'확대된 미션 연결도');
     const ids=new Map();
     for(const node of svg.querySelectorAll('[id]')){const old=node.id;ids.set(old,'expanded-'+old);node.id='expanded-'+old;}
     for(const node of [svg,...svg.querySelectorAll('*')])for(const attr of [...node.attributes]){

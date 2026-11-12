@@ -1,4 +1,4 @@
-import {boards,definitions,errors} from './engine.js';
+import {boards,definitions,errors,examples} from './engine.js';
 
 export const STORAGE_KEY = 'cubelink-starter-project-v1';
 export function parseProject(text) {
@@ -17,6 +17,7 @@ export function parseProject(text) {
     clean[section].push(next);
   }
   const issues=errors(clean); if (issues.length) throw Error(issues.join(' · '));
+  if(typeof p.mission==='string'&&Object.hasOwn(examples,p.mission))clean.mission=p.mission;
   return clean;
 }
 export function serializeProject(project) { return JSON.stringify({version:1,project},null,2); }

@@ -1,4 +1,4 @@
-import {boards,definitions,errors,examples} from './engine.js';
+import {boards,definitions,errors,examples} from './engine.js?v=1.4.0-r2';
 
 export const STORAGE_KEY = 'cubelink-starter-project-v1';
 export function parseProject(text) {

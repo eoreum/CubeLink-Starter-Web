@@ -1,10 +1,10 @@
-import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js';
-import {initLayout} from './layout.js';
-import {parseProject,serializeProject,STORAGE_KEY} from './project-store.js';
-import {lessons,missionOrder} from './lessons.js';
-import {renderWiring} from './wiring.js';
-import {initCircuitView} from './circuit-view.js';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.4.0-r2';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.4.0-r2';
+import {initLayout} from './layout.js?v=1.4.0-r2';
+import {parseProject,serializeProject,STORAGE_KEY} from './project-store.js?v=1.4.0-r2';
+import {lessons,missionOrder} from './lessons.js?v=1.4.0-r2';
+import {renderWiring} from './wiring.js?v=1.4.0-r2';
+import {initCircuitView} from './circuit-view.js?v=1.4.0-r2';
 const $=id=>document.getElementById(id);
 let activeMission='ledOn',diagramSignature='',completed=new Set();
 let project={...structuredClone(examples.ledOn),mission:'ledOn'},sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;

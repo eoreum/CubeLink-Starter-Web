@@ -1,4 +1,4 @@
-import {boards,key,errors} from './engine.js';
+import {boards,key,errors} from './engine.js?v=1.4.0-r2';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
@@ -85,4 +85,3 @@ export function renderWiring(svg,project,title) {
  const result=wiringSvg(project,title);svg.setAttribute('viewBox','0 0 1100 '+result.height);svg.innerHTML=result.body;
  svg.setAttribute('aria-label',title+' · '+(result.plan.components.map(c=>c.label).join(', ')||'USB 연결'));
 }
-

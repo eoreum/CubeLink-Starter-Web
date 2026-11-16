@@ -1,4 +1,4 @@
-import {AI_MAKER_STORAGE_KEY,buildProject,emptyDesign,getPlan,initialMessages,parseSession,replyToIdea,serializeSession} from './ai-maker.js?v=1.5.0-ai4';
+import {AI_MAKER_STORAGE_KEY,buildProject,emptyDesign,getPlan,initialMessages,parseSession,replyToIdea,serializeSession} from './ai-maker.js?v=1.5.0-ai5';
 const quickIdeas=['LED를 깜빡이게 하고 싶어요','버튼을 누르면 LED가 켜지게 해 줘','어두워지면 켜지는 가로등','가까이 오면 LED가 켜지게 해 줘'];
 export function initAiMaker({getBoard,applyProject,toast}){
  const dialog=document.getElementById('aiMakerDialog'),messagesHost=document.getElementById('aiMessages'),designHost=document.getElementById('aiDesign'),form=document.getElementById('aiForm'),input=document.getElementById('aiInput'),apply=document.getElementById('aiApply');

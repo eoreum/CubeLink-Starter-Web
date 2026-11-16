@@ -1,12 +1,12 @@
-import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.5.0-ai4';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-ai4';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.5.0-ai5';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-ai5';
 import {initLayout} from './layout.js?v=1.5.0';
-import {parseProject,serializeProject} from './project-store.js?v=1.5.0-ai4';
+import {parseProject,serializeProject} from './project-store.js?v=1.5.0-ai5';
 import {lessons,missionOrder} from './lessons.js?v=1.5.0';
-import {renderWiring} from './wiring.js?v=1.5.0-ai4';
+import {renderWiring} from './wiring.js?v=1.5.0-ai5';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-ai4';
-import {initAiMaker} from './ai-maker-ui.js?v=1.0.0-ai4';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-ai5';
+import {initAiMaker} from './ai-maker-ui.js?v=1.0.0-ai5';
 const $=id=>document.getElementById(id);
 let activeMission='ledOn',diagramSignature='',completed=new Set();
 let project=blankProject('ledOn'),sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;

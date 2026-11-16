@@ -1,4 +1,4 @@
-import {boards,examples,errors,generate} from './engine.js?v=1.5.0-ai4';
+import {boards,examples,errors,generate} from './engine.js?v=1.5.0-ai5';
 
 export const AI_MAKER_STORAGE_KEY='cubelink-starter-ai-maker-v1';
 const plans={

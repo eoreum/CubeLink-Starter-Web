@@ -1,4 +1,4 @@
-import {definitions,block,pins} from './engine.js?v=1.5.0-ai4';
+import {definitions,block,pins} from './engine.js?v=1.5.0-ai5';
 
 // Uses the same vendored Blockly renderer and C-shaped setup/loop structure as CubeLink Studio.
 export function registerBlocks(B,getBoard){

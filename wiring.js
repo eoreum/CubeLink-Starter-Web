@@ -1,4 +1,4 @@
-import {boards,key,errors} from './engine.js?v=1.5.0-ai4';
+import {boards,key,errors} from './engine.js?v=1.5.0-ai5';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {

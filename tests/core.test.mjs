@@ -6,7 +6,7 @@ import {missionOrder} from '../lessons.js';
 
 test('all 12 reference answers remain valid and generate Arduino C++',()=>{
  assert.equal(missionOrder.length,12);
- for(const mission of missionOrder){const project={...structuredClone(examples[mission]),mission};assert.deepEqual(errors(project),[],mission);assert.deepEqual(warnings(project),[],mission);const code=generate(project);assert.match(code,/void setup\(\)/,mission);assert.match(code,/void loop\(\)/,mission);}
+ for(const mission of missionOrder){const project={...structuredClone(examples[mission]),mission};assert.deepEqual(errors(project),[],mission);assert.deepEqual(warnings(project),[],mission);const code=generate(project);assert.doesNotMatch(code,/#include\s*<Arduino\.h>/,mission);assert.match(code,/void setup\(\)/,mission);assert.match(code,/void loop\(\)/,mission);}
 });
 test('generated code keeps critical Starter behaviors',()=>{
  assert.match(generate(examples.blink),/digitalWrite\(13, HIGH\);[\s\S]*delay\(500\);[\s\S]*digitalWrite\(13, LOW\);/);

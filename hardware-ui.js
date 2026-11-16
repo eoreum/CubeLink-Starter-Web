@@ -1,4 +1,4 @@
-import {BRIDGE_URL,compileSketch,connectBridge,profilesForBoard,uploadSketch} from './hardware-bridge.js?v=1.6.0-hw2';
+import {BRIDGE_URL,compileSketch,connectBridge,ensureLiveFirmware,profilesForBoard,uploadSketch} from './hardware-bridge.js?v=1.7.0-live1';
 
 const $=id=>document.getElementById(id);
 export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected,releaseSerial,resumeSerial,selectHardwareMonitor,appendHardwareLog,toast}){
@@ -14,15 +14,27 @@ export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected
    if(mode==='compile'){state('working','Arduino C++를 컴파일하는 중…');write('1/1 컴파일 검사 시작');const result=await compileSketch({source:getCode(),profile:profile.value});write(result.output||'컴파일 성공');state('success','컴파일 성공');toast('Arduino 코드 컴파일을 통과했습니다');return}
    if(isSerialConnected()){state('working','업로드를 위해 시리얼 포트를 잠시 닫는 중…');savedPort=await releaseSerial()}
    state('working','컴파일 후 보드에 업로드하는 중…');write('1/2 컴파일\n2/2 '+port.value+' 업로드');const result=await uploadSketch({source:getCode(),profile:profile.value,port:port.value});write(result.output||'업로드 성공');state('success','업로드 및 검증 성공');appendHardwareLog('── 새 코드 업로드 완료 · '+port.value+' ──');
-   if(savedPort){state('working','시리얼 모니터를 다시 연결하는 중…');await resumeSerial(savedPort);selectHardwareMonitor();state('success',mode==='realtime'?'실시간 실행 중 · 실제 USB 모니터 연결됨':'업로드 완료 · USB 모니터 다시 연결됨')}
-   else if(mode==='realtime'){selectHardwareMonitor();write('실시간 값을 보려면 위쪽의 USB 시리얼 연결을 한 번 눌러 포트 권한을 허용하세요.');state('success','업로드 완료 · USB 시리얼 연결 필요')}
-   toast(mode==='realtime'?'업로드가 끝났습니다. 실제 보드가 실행 중입니다.':'아두이노 업로드가 완료됐습니다.');
+   if(savedPort){state('working','시리얼 모니터를 다시 연결하는 중…');await resumeSerial(savedPort);selectHardwareMonitor();state('success','업로드 완료 · USB 모니터 다시 연결됨')}
+   toast('아두이노 업로드가 완료됐습니다.');
   }catch(error){state('error',mode==='compile'?'컴파일 실패':'업로드 실패');write('오류: '+error.message);appendHardwareLog('⚠ '+error.message);if(savedPort)try{await resumeSerial(savedPort)}catch{}}
   finally{setBusy(false)}
  }
+ async function startLive(){if(!port.value){toast('라이브 모드로 연결할 COM 포트를 선택하세요');return}setBusy(true);write('',true);let savedPort=null;try{
+   if(isSerialConnected()){state('working','펌웨어 검사를 위해 USB 시리얼을 잠시 닫는 중…');savedPort=await releaseSerial()}
+   state('working','CubeLink Live 펌웨어를 검사하는 중…');write('1/3 펌웨어 응답과 버전 확인');
+   const result=await ensureLiveFirmware({profile:profile.value,port:port.value});
+   if(result.installed)write(`2/3 펌웨어 ${result.version} 자동 설치 완료${result.previousVersion?' · 이전 '+result.previousVersion:''}`);
+   else write(`2/3 최신 펌웨어 ${result.version} 확인 · 설치 생략`);
+   appendHardwareLog(`── CubeLink Live ${result.version} · ${result.installed?'자동 설치':'기존 펌웨어 사용'} ──`);
+   if(savedPort){state('working','3/3 실제 USB 라이브 연결을 복원하는 중…');await resumeSerial(savedPort);selectHardwareMonitor();state('success',`라이브 모드 준비 완료 · 펌웨어 ${result.version}`);write('3/3 실제 USB 연결 완료');}
+   else{selectHardwareMonitor();state('success',`라이브 펌웨어 ${result.version} 준비 완료 · USB 연결 필요`);write('3/3 위쪽의 USB 시리얼 연결을 눌러 같은 보드를 선택하세요.');}
+   toast(result.installed?'라이브 펌웨어를 자동 설치했습니다.':'최신 라이브 펌웨어가 있어 설치를 생략했습니다.');
+  }catch(error){state('error','라이브 모드 준비 실패');write('오류: '+error.message);appendHardwareLog('⚠ '+error.message);if(savedPort)try{await resumeSerial(savedPort)}catch{}}
+  finally{setBusy(false)}
+ }
  const oldHelp=[...document.querySelectorAll('#helpDialog p')].find(item=>item.textContent.includes('이 앱에는 직접 업로드 기능이 없습니다'));
- if(oldHelp)oldHelp.textContent='직접 업로드와 실제 실행: 업로드·실행 창은 PC의 CubeLink Starter Bridge를 통해 공식 Arduino CLI로 코드를 컴파일하고 Uno/Nano/Mega에 기록합니다. 실시간 실행은 업로드된 프로그램을 실제 보드에서 실행하면서 9600 baud 시리얼 값을 표시합니다. 업로드 중에는 Arduino IDE와 다른 시리얼 모니터를 닫으세요.';
+ if(oldHelp)oldHelp.textContent='업로드 모드는 완성 코드를 보드에 기록해 PC 연결 없이 실행합니다. 라이브 모드는 CubeLink Live 펌웨어를 먼저 검사하고, 없거나 버전이 다를 때만 자동 설치합니다. 최신 펌웨어가 있으면 설치하지 않고 바로 연결 준비를 합니다.';
  const help=document.querySelector('.hardware-help'),download=document.createElement('a');download.className='bridge-download';download.href='downloads/CubeLink-Starter-Bridge-Windows.zip';download.download='CubeLink-Starter-Bridge-Windows.zip';download.textContent='Windows 브리지 받기 ↓';help.prepend(download);
  const steps=help.querySelectorAll('li');if(steps[0])steps[0].textContent='Windows 브리지 ZIP을 받아 압축을 풀고 setup-bridge.cmd를 한 번 실행합니다.';if(steps[1])steps[1].textContent='설치가 끝나면 같은 폴더의 start-bridge.cmd를 실행하고 창을 열어 둡니다.';
- $('hardwareOpen').onclick=()=>{setProfiles();dialog.showModal();detect()};$('hardwareClose').onclick=()=>dialog.close();$('hardwareRefresh').onclick=detect;$('hardwareCompile').onclick=()=>run('compile');$('hardwareUpload').onclick=()=>run('upload');$('hardwareRealtime').onclick=()=>run('realtime');
+ $('hardwareOpen').onclick=()=>{setProfiles();dialog.showModal();detect()};$('hardwareClose').onclick=()=>dialog.close();$('hardwareRefresh').onclick=detect;$('hardwareCompile').onclick=()=>run('compile');$('hardwareUpload').onclick=()=>run('upload');$('hardwareRealtime').onclick=startLive;
 }

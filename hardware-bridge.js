@@ -23,4 +23,6 @@ export async function connectBridge(){
 }
 export async function compileSketch({source,profile}){return json('/compile',{method:'POST',body:JSON.stringify({source,profile})})}
 export async function uploadSketch({source,profile,port}){return json('/upload',{method:'POST',body:JSON.stringify({source,profile,port})})}
+export async function checkLiveFirmware({profile,port}){return json('/firmware/check',{method:'POST',body:JSON.stringify({profile,port})})}
+export async function ensureLiveFirmware({profile,port}){try{return await json('/firmware/ensure',{method:'POST',body:JSON.stringify({profile,port})})}catch(error){if(error.message.includes('지원하지 않는 브리지 주소'))throw Error('자동 펌웨어 검사를 지원하는 최신 Windows 브리지를 다시 받아 실행하세요.');throw error}}
 export {BRIDGE_URL};

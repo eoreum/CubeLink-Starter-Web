@@ -3,8 +3,8 @@ import {BRIDGE_URL,compileSketch,connectBridge,ensureLiveFirmware,profilesForBoa
 const $=id=>document.getElementById(id);
 export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected,releaseSerial,resumeSerial,selectHardwareMonitor,appendHardwareLog,toast}){
  const dialog=$('hardwareDialog'),profile=$('hardwareProfile'),port=$('hardwarePort'),status=$('hardwareStatus'),log=$('hardwareLog');
- const modeSelect=$('hardwareMode');const buttons=[$('hardwareRefresh'),$('hardwareCompile'),$('hardwareUpload'),$('hardwareRealtime')];let busy=false;
- function setBusy(value){busy=value;buttons.forEach(button=>button.disabled=value);$('hardwareClose').disabled=value}
+ const modeSelect=$('hardwareMode'),startButton=$('hardwareStart');const buttons=[$('hardwareRefresh'),$('hardwareCompile'),$('hardwareUpload'),$('hardwareRealtime')];let busy=false;
+ function setBusy(value){busy=value;buttons.forEach(button=>button.disabled=value);startButton.disabled=value;modeSelect.disabled=value;$('hardwareClose').disabled=value}
  function write(message,replace=false){if(replace)log.textContent='';log.textContent+=(log.textContent?'\n':'')+message;log.scrollTop=log.scrollHeight}
  function state(kind,message){status.dataset.state=kind;status.textContent=message}
  function setProfiles(){const saved=profile.value;const items=profilesForBoard(getBoard());profile.replaceChildren(...items.map(item=>{const option=document.createElement('option');option.value=item.value;option.textContent=item.label;return option}));if(items.some(item=>item.value===saved))profile.value=saved}
@@ -34,7 +34,7 @@ export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected
  }
  const oldHelp=[...document.querySelectorAll('#helpDialog p')].find(item=>item.textContent.includes('이 앱에는 직접 업로드 기능이 없습니다'));
  if(oldHelp)oldHelp.textContent='업로드 모드는 완성 코드를 보드에 기록해 PC 연결 없이 실행합니다. 라이브 모드는 CubeLink Live 펌웨어를 먼저 검사하고, 없거나 버전이 다를 때만 자동 설치합니다. 최신 펌웨어가 있으면 설치하지 않고 바로 연결 준비를 합니다.';
- modeSelect.onchange=()=>{const live=modeSelect.value==='live';$('hardwareRealtime').hidden=!live;$('hardwareUpload').hidden=live;$('hardwareCompile').hidden=live;state('ready',live?'실시간 실행 선택 · 보드와 포트를 확인하세요':'업로드 선택 · 보드와 포트를 확인하세요')};modeSelect.onchange();
+ modeSelect.onchange=()=>{const live=modeSelect.value==='live';startButton.textContent=live?'▶ 실시간 실행':'⬆ 업로드';$('hardwareRealtime').hidden=!live;$('hardwareUpload').hidden=live;$('hardwareCompile').hidden=live;state('ready',live?'실시간 실행 선택':'업로드 선택')};modeSelect.onchange();startButton.onclick=()=>modeSelect.value==='live'?startLive():run('upload');
  const help=document.querySelector('.hardware-help'),download=document.createElement('a');download.className='bridge-download';download.href='downloads/CubeLink-Starter-Bridge-Windows.zip';download.download='CubeLink-Starter-Bridge-Windows.zip';download.textContent='Windows 브리지 받기 ↓';help.prepend(download);
  const steps=help.querySelectorAll('li');if(steps[0])steps[0].textContent='Windows 브리지 ZIP을 받아 압축을 풀고 setup-bridge.cmd를 한 번 실행합니다.';if(steps[1])steps[1].textContent='설치가 끝나면 같은 폴더의 start-bridge.cmd를 실행하고 창을 열어 둡니다.';
  $('hardwareOpen').onclick=()=>{setProfiles();dialog.showModal();detect()};$('hardwareClose').onclick=()=>dialog.close();$('hardwareRefresh').onclick=detect;$('hardwareCompile').onclick=()=>run('compile');$('hardwareUpload').onclick=()=>run('upload');$('hardwareRealtime').onclick=startLive;

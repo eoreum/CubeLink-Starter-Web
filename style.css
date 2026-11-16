@@ -32,3 +32,9 @@ nav #example{max-width:245px}nav #previousMission,nav #nextMission{padding:6px 8
 
 /* Compact student-facing hardware connection dialog */
 .hardware-simple-controls{display:flex;align-items:end;gap:12px;margin:12px 0}.hardware-simple-controls label{flex:1;font-weight:700;font-size:12px}.hardware-simple-controls select{display:block;width:100%;margin-top:5px;padding:9px}.hardware-simple-controls button{min-width:160px;padding:11px 15px}.hardware-advanced{margin-top:12px;border-top:1px solid #dbe4e7;padding-top:10px}.hardware-advanced summary{cursor:pointer;color:#607681;font-size:12px}.hardware-advanced pre{max-height:180px;overflow:auto}.hardware-advanced .hardware-help{font-size:12px}@media(max-width:700px){.hardware-simple-controls{flex-direction:column;align-items:stretch}.hardware-simple-controls button{width:100%}}
+
+/* Make existing live circuit zoom discoverable on laptop screens. */
+.circuit-discovery{font-size:11px;font-weight:650;color:#256967;padding:5px 2px 4px;line-height:1.4}
+.simulation .panel-title #expandCircuit{font-weight:750;border:1px solid #6aa99f;background:#e9f7f3;color:#176a50}
+#circuit:hover{outline:2px solid #6aa99f;outline-offset:-2px;border-radius:5px}
+@media(max-width:1100px){.simulation .panel-title #expandCircuit{font-size:11px;min-height:30px}.circuit-discovery{font-size:10px}.simulation .panel-title h2{white-space:nowrap}}

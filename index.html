@@ -19,6 +19,7 @@
  <div class="hardware-body">
   <div id="hardwareStatus" class="hardware-status" data-state="idle" role="status">브리지 확인 전</div>
   <div class="hardware-fields"><label>연결 보드<select id="hardwareProfile"></select></label><label>USB 포트<select id="hardwarePort"><option value="">보드 확인을 눌러 주세요</option></select></label><button id="hardwareRefresh">보드 다시 확인</button></div>
+  <div class="hardware-fields"><label>실행 방식<select id="hardwareMode"><option value="live">실시간 실행</option><option value="upload">업로드</option></select></label><p>보드와 포트를 선택한 뒤 실행 방식을 전환하세요.</p></div>
   <div class="hardware-mode-grid">
    <section class="hardware-mode-card"><span class="mode-label">업로드 모드</span><h3>보드에 저장해 독립 실행</h3><p>블록에서 만든 Arduino C++를 컴파일하고 보드에 기록합니다.</p><div class="hardware-actions"><button id="hardwareCompile">① 컴파일 검사</button><button id="hardwareUpload" class="primary">② 보드에 업로드</button></div></section>
    <section class="hardware-mode-card live"><span class="mode-label">라이브 모드</span><h3>연결한 상태에서 실시간 제어</h3><p>펌웨어를 검사해 최신 버전이면 설치를 생략하고, 없거나 다를 때만 자동 설치합니다.</p><div class="hardware-actions"><button id="hardwareRealtime" class="realtime">▶ 펌웨어 검사 후 라이브 연결</button></div></section>

@@ -9,7 +9,7 @@ export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected
  function state(kind,message){status.dataset.state=kind;status.textContent=message}
  function setProfiles(){const items=profilesForBoard(getBoard());profile.replaceChildren(...items.map(item=>{const option=document.createElement('option');option.value=item.value;option.textContent=item.label;return option}))}
  function setPorts(ports){const previous=port.value;port.replaceChildren();for(const item of ports){const option=document.createElement('option');option.value=item.address;const board=item.boards?.map(value=>value.name||value.fqbn).filter(Boolean).join(', ');option.textContent=item.address+(board?' · '+board:'');port.append(option)}if(previous&&ports.some(item=>item.address===previous))port.value=previous;if(!ports.length){const option=document.createElement('option');option.value='';option.textContent='연결된 보드를 찾지 못했습니다';port.append(option)}}
- async function detect(){setBusy(true);state('working','브리지와 Arduino 보드를 확인하는 중…');try{const result=await connectBridge();setPorts(result.ports);state('ready',`브리지 연결됨 · Arduino CLI ${result.health.cliVersion||'확인됨'}`);write('✓ CubeLink Starter Bridge 연결\n✓ 보드 목록을 새로 읽었습니다.',true)}catch(error){state('error','브리지를 실행해야 합니다');write('브리지 연결 실패: '+error.message+'\n\n받은 ZIP의 압축을 풀고 start-bridge.cmd를 실행하세요.\n주소: '+BRIDGE_URL,true)}finally{setBusy(false)}}
+ async function detect(){setBusy(true);state('working','브리지와 Arduino 보드를 확인하는 중…');try{const result=await connectBridge();setPorts(result.ports);state('ready',`Windows 브리지 준비됨 · 보드 통신은 아직 확인되지 않음 · Arduino CLI ${result.health.cliVersion||'확인됨'}`);write('✓ Windows 브리지 연결 확인\n✓ 포트 목록 조회 완료\n※ 실제 Arduino 통신은 실시간 실행에서 펌웨어 응답을 확인해야 합니다.',true)}catch(error){state('error','브리지를 실행해야 합니다');write('브리지 연결 실패: '+error.message+'\n\n받은 ZIP의 압축을 풀고 start-bridge.cmd를 실행하세요.\n주소: '+BRIDGE_URL,true)}finally{setBusy(false)}}
  async function run(mode){const issues=getErrors();if(issues.length){toast('블록 오류를 먼저 수정하세요');return}if(mode!=='compile'&&!port.value){toast('업로드할 COM 포트를 선택하세요');return}setBusy(true);write('',true);let savedPort=null;try{
    if(mode==='compile'){state('working','Arduino C++를 컴파일하는 중…');write('1/1 컴파일 검사 시작');const result=await compileSketch({source:getCode(),profile:profile.value});write(result.output||'컴파일 성공');state('success','컴파일 성공');toast('Arduino 코드 컴파일을 통과했습니다');return}
    if(isSerialConnected()){state('working','업로드를 위해 시리얼 포트를 잠시 닫는 중…');savedPort=await releaseSerial()}
@@ -27,7 +27,7 @@ export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected
    else write(`2/3 최신 펌웨어 ${result.version} 확인 · 설치 생략`);
    appendHardwareLog(`── CubeLink Live ${result.version} · ${result.installed?'자동 설치':'기존 펌웨어 사용'} ──`);
    if(savedPort){state('working','3/3 실제 USB 라이브 연결을 복원하는 중…');await resumeSerial(savedPort);selectHardwareMonitor();state('success',`라이브 모드 준비 완료 · 펌웨어 ${result.version}`);write('3/3 실제 USB 연결 완료');}
-   else{selectHardwareMonitor();state('success',`라이브 펌웨어 ${result.version} 준비 완료 · USB 연결 필요`);write('3/3 위쪽의 USB 시리얼 연결을 눌러 같은 보드를 선택하세요.');}
+   else{selectHardwareMonitor();state('ready',`펌웨어 ${result.version} 확인 · 실제 USB 연결은 아직 확인되지 않음`);write('3/3 위쪽의 USB 시리얼 연결을 눌러 같은 보드를 선택하세요.');}
    toast(result.installed?'라이브 펌웨어를 자동 설치했습니다.':'최신 라이브 펌웨어가 있어 설치를 생략했습니다.');
   }catch(error){state('error','라이브 모드 준비 실패');write('오류: '+error.message);appendHardwareLog('⚠ '+error.message);if(savedPort)try{await resumeSerial(savedPort)}catch{}}
   finally{setBusy(false)}

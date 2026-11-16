@@ -1,109 +1,94 @@
 export const boards={uno:{name:'Uno R3',digital:14,analog:6,gpioAnalog:6},nano:{name:'Nano (Classic)',digital:14,analog:8,gpioAnalog:6},mega:{name:'Mega 2560',digital:54,analog:16,gpioAnalog:16}};
+
+export const statementTypes=new Set(['serialBegin','printText','printValue','mode','write','delay','setVariable','changeVariable','if']);
+export const expressionTypes=new Set(['number','variable','digitalRead','button','analogRead','ldr','pot','temperature','dhtTemperature','dhtHumidity','sound','pir','tilt','joystickAxis','ultrasonic','compare','logic','map']);
 export const definitions={
- distanceLed:{label:'거리 조건 LED',category:'io',pin:'13',threshold:20},
- mapValue:{label:'읽은 값 범위 변환',category:'time',inMin:0,inMax:1023,outMin:0,outMax:180},
- increment:{label:'카운터 증가',category:'time',step:1},
- mode:{label:'핀 모드 설정',category:'io',pin:'13',mode:'OUTPUT'},
- write:{label:'디지털 출력',category:'io',pin:'13',state:'HIGH'},
- read:{label:'디지털 읽기',category:'io',pin:'2'},
- analog:{label:'아날로그 읽기',category:'sensor',pin:'A0'},
- delay:{label:'기다리기',category:'time',ms:500},
- print:{label:'시리얼 출력',category:'time',source:'value',text:'Hello, CubeLink!'},
- ultrasonic:{label:'초음파 거리',category:'sensor',trig:'9',echo:'10'},
- ldr:{label:'조도 센서 (LDR)',category:'sensor',pin:'A0'},
- pot:{label:'가변저항',category:'sensor',pin:'A1'},
- button:{label:'버튼 읽기',category:'sensor',pin:'2'},
- threshold:{label:'조건에 따라 LED 출력',category:'io',pin:'13',operator:'<',threshold:500},
- led:{label:'LED 출력',category:'io',pin:'13',state:'HIGH'}
+ serialBegin:{label:'시리얼 통신 시작',category:'serial',baud:9600},printText:{label:'시리얼에 텍스트 출력',category:'serial',text:'Hello, CubeLink!'},printValue:{label:'시리얼에 값 출력',category:'serial'},mode:{label:'핀 모드 설정',category:'io',pin:'13',mode:'OUTPUT'},write:{label:'디지털 출력',category:'io',pin:'13',state:'HIGH'},delay:{label:'기다리기',category:'basic',ms:500},setVariable:{label:'변수에 값 저장',category:'variable'},changeVariable:{label:'변수값 바꾸기',category:'variable'},if:{label:'만약 / 아니면',category:'flow'},
+ number:{label:'숫자',category:'flow',value:0},variable:{label:'변수값',category:'variable',name:'value'},digitalRead:{label:'디지털 핀 읽기',category:'io',pin:'2'},button:{label:'버튼 읽기',category:'sensor',pin:'2'},analogRead:{label:'아날로그 핀 읽기',category:'sensor',pin:'A0'},ldr:{label:'조도 센서 값',category:'sensor',pin:'A0'},pot:{label:'가변저항 값',category:'sensor',pin:'A1'},temperature:{label:'TMP36 온도',category:'sensor',pin:'A2'},dhtTemperature:{label:'DHT11 온도',category:'sensor',pin:'3'},dhtHumidity:{label:'DHT11 습도',category:'sensor',pin:'3'},sound:{label:'소리 센서 값',category:'sensor',pin:'A2'},pir:{label:'PIR 움직임 감지',category:'sensor',pin:'3'},tilt:{label:'기울기 감지',category:'sensor',pin:'4'},joystickAxis:{label:'조이스틱 축 값',category:'sensor',pin:'A0',axis:'X'},ultrasonic:{label:'초음파 거리',category:'sensor',trig:'9',echo:'10'},compare:{label:'값 비교',category:'flow',operator:'<'},logic:{label:'논리 결합',category:'flow',operator:'AND'},map:{label:'값 범위 변환',category:'sensor',inMin:0,inMax:1023,outMin:0,outMax:180}
 };
-export function block(type){const {label,category,...fields}=definitions[type];return {type,...fields}}
+
+export const statement=(type,fields={})=>({type,...fields});
+export const expression=(type,fields={})=>({type,...Object.fromEntries(Object.entries(definitions[type]||{}).filter(([key])=>!['label','category'].includes(key))),...fields});
 export function pins(board,analog=false){const b=boards[board];return analog?Array.from({length:b.analog},(_,i)=>'A'+i):[...Array.from({length:b.digital},(_,i)=>String(i)),...Array.from({length:b.gpioAnalog},(_,i)=>'A'+i)]}
-export function key(board,pin){return pin.startsWith('A')?String((board==='mega'?54:14)+Number(pin.slice(1))):pin}
-export function errors(project){const result=[];if(!boards[project.board])return ['지원하지 않는 보드'];for(const section of ['setup','loop'])project[section].forEach((b,i)=>{const prefix=`${section} ${i+1}`;if(!definitions[b.type]){result.push(prefix+': 알 수 없는 블록');return}for(const field of ['pin','trig','echo'])if(field in b&&!pins(project.board,['analog','ldr','pot'].includes(b.type)).includes(b[field]))result.push(`${prefix}: ${b[field]} 핀은 이 보드에서 사용할 수 없습니다`);if(b.type==='delay'&&(!Number.isInteger(Number(b.ms))||Number(b.ms)<0||Number(b.ms)>60000))result.push(prefix+': 대기 시간은 0~60000 정수입니다');if(b.type==='mode'&&!['INPUT','OUTPUT','INPUT_PULLUP'].includes(b.mode))result.push(prefix+': 잘못된 핀 모드');if(b.type==='threshold'&&(!['<','>='].includes(b.operator)||typeof b.threshold!=='number'||!Number.isFinite(b.threshold)||Math.abs(b.threshold)>1000000))result.push(prefix+': 잘못된 비교 조건');if(['write','led'].includes(b.type)&&!['HIGH','LOW'].includes(b.state))result.push(prefix+': 잘못된 출력 값');if(b.type==='print'&&!['text','value'].includes(b.source))result.push(prefix+': 잘못된 출력 종류');if(b.type==='distanceLed'&&(!Number.isFinite(b.threshold)||b.threshold<0||b.threshold>400))result.push(prefix+': 거리 기준은 0~400cm입니다');if(b.type==='mapValue'&&(![b.inMin,b.inMax,b.outMin,b.outMax].every(n=>Number.isInteger(n)&&Math.abs(n)<=10000)||b.inMin===b.inMax))result.push(prefix+': map 범위는 서로 다른 입력 경계와 ±10000 이내 정수여야 합니다');if(b.type==='increment'&&(!Number.isInteger(b.step)||Math.abs(b.step)>1000))result.push(prefix+': 증가량은 ±1000 이내 정수입니다');if(b.type==='ultrasonic'&&b.trig===b.echo)result.push(prefix+': Trig와 Echo는 서로 다른 핀이 필요합니다')});return result}
-export function warnings(project){if(errors(project).length)return [];const modes={},out=[];for(const b of [...project.setup,...project.loop]){const k=p=>key(project.board,p);if(b.type==='mode')modes[k(b.pin)]=b.mode;if(['write','led','threshold','distanceLed'].includes(b.type)&&modes[k(b.pin)]!=='OUTPUT')out.push(`${b.pin}: pinMode OUTPUT이 없어 디지털 출력을 차단합니다`);if(b.type==='ultrasonic'&&(modes[k(b.trig)]!=='OUTPUT'||!['INPUT','INPUT_PULLUP'].includes(modes[k(b.echo)])))out.push('초음파: Trig OUTPUT / Echo INPUT 설정이 필요합니다');}if([...project.setup,...project.loop].some(b=>[b.pin,b.trig,b.echo].some(p=>['0','1'].includes(p))))out.push('D0/D1은 하드웨어 시리얼과 충돌할 수 있습니다');return [...new Set(out)]}
+export function key(board,pin){pin=String(pin);return pin.startsWith('A')?String((board==='mega'?54:14)+Number(pin.slice(1))):pin}
+
+const number=value=>expression('number',{value});
+const variable=name=>expression('variable',{name});
+const setVariable=(name,value)=>statement('setVariable',{name,value});
+const printValue=value=>statement('printValue',{value});
+const serial=()=>statement('serialBegin',{baud:9600});
+const wait=ms=>statement('delay',{ms});
+const pinMode=(pin,mode)=>statement('mode',{pin:String(pin),mode});
+const write=(pin,state)=>statement('write',{pin:String(pin),state});
+const compare=(left,operator,right)=>expression('compare',{left,operator,right});
+const ifElse=(condition,then,otherwise=[])=>statement('if',{condition,then,else:otherwise});
+
+export function walkProject(project){
+ const nodes=[];const visit=node=>{if(!node||typeof node!=='object'||typeof node.type!=='string')return;nodes.push(node);if(node.type==='if'){visit(node.condition);(node.then||[]).forEach(visit);(node.else||[]).forEach(visit);return;}for(const field of ['value','left','right','a','b'])if(node[field]&&typeof node[field]==='object')visit(node[field]);};
+ for(const section of ['setup','loop'])(project?.[section]||[]).forEach(visit);return nodes;
+}
+export function blockCount(project){return walkProject(project).length}
+
+function validPin(project,pin,analog=false){return typeof pin==='string'&&pins(project.board,analog).includes(pin)}
+const analogTypes=new Set(['analogRead','ldr','pot','temperature','sound','joystickAxis']);
+const digitalTypes=new Set(['digitalRead','button','dhtTemperature','dhtHumidity','pir','tilt']);
+export function errors(project){
+ const out=[];if(!project||!Object.hasOwn(boards,project.board))return ['지원하지 않는 보드'];if(!Array.isArray(project.setup)||!Array.isArray(project.loop))return ['setup/loop 형식이 올바르지 않습니다'];
+ const visit=(node,path,depth=0)=>{if(depth>20){out.push(path+': 블록 연결이 너무 깊습니다');return;}if(!node||typeof node!=='object'||typeof node.type!=='string'){out.push(path+': 블록 형식이 올바르지 않습니다');return;}if(!statementTypes.has(node.type)&&!expressionTypes.has(node.type)){out.push(path+': 알 수 없는 블록');return;}
+  if(analogTypes.has(node.type)&&!validPin(project,node.pin,true))out.push(`${path}: ${node.pin} 아날로그 핀을 사용할 수 없습니다`);if(digitalTypes.has(node.type)&&!validPin(project,node.pin,false))out.push(`${path}: ${node.pin} 디지털 핀을 사용할 수 없습니다`);if(['mode','write'].includes(node.type)&&!validPin(project,node.pin,false))out.push(`${path}: ${node.pin} 핀을 사용할 수 없습니다`);
+  if(node.type==='mode'&&!['INPUT','OUTPUT','INPUT_PULLUP'].includes(node.mode))out.push(path+': 잘못된 핀 모드');if(node.type==='write'&&!['HIGH','LOW'].includes(node.state))out.push(path+': 잘못된 출력 값');if(node.type==='serialBegin'&&(!Number.isInteger(node.baud)||node.baud<300||node.baud>250000))out.push(path+': 잘못된 통신 속도');if(node.type==='delay'&&(!Number.isInteger(node.ms)||node.ms<0||node.ms>60000))out.push(path+': 대기 시간은 0~60000 정수입니다');
+  if(['setVariable','changeVariable','variable'].includes(node.type)&&(!node.name||typeof node.name!=='string'||node.name.length>40))out.push(path+': 변수 이름이 올바르지 않습니다');if(node.type==='changeVariable'&&(!Number.isFinite(node.delta)||Math.abs(node.delta)>1000000))out.push(path+': 변수 변경값이 올바르지 않습니다');if(node.type==='number'&&(!Number.isFinite(node.value)||Math.abs(node.value)>1000000))out.push(path+': 숫자 범위를 확인하세요');if(node.type==='compare'&&!['==','!=','<','<=','>','>='].includes(node.operator))out.push(path+': 비교 연산자가 올바르지 않습니다');if(node.type==='logic'&&!['AND','OR'].includes(node.operator))out.push(path+': 논리 연산자가 올바르지 않습니다');if(node.type==='map'&&(![node.inMin,node.inMax,node.outMin,node.outMax].every(Number.isFinite)||node.inMin===node.inMax))out.push(path+': map 범위를 확인하세요');
+  if(node.type==='ultrasonic'){if(!validPin(project,node.trig,false)||!validPin(project,node.echo,false))out.push(path+': 초음파 핀을 사용할 수 없습니다');else if(node.trig===node.echo)out.push(path+': Trig와 Echo는 서로 다른 핀이 필요합니다');}if(node.type==='joystickAxis'&&!['X','Y'].includes(node.axis))out.push(path+': 조이스틱 축이 올바르지 않습니다');
+  if(node.type==='if'){visit(node.condition,path+' 조건',depth+1);if(!Array.isArray(node.then)||!Array.isArray(node.else)){out.push(path+': 조건 실행 블록 형식이 올바르지 않습니다');return;}node.then.forEach((child,i)=>visit(child,`${path} 참 ${i+1}`,depth+1));node.else.forEach((child,i)=>visit(child,`${path} 거짓 ${i+1}`,depth+1));return;}for(const field of ['value','left','right','a','b'])if(node[field]&&typeof node[field]==='object')visit(node[field],path+' '+field,depth+1);
+ };
+ for(const section of ['setup','loop'])project[section].forEach((node,i)=>visit(node,`${section} ${i+1}`));return [...new Set(out)];
+}
+
+export function warnings(project){
+ if(errors(project).length)return [];const nodes=walkProject(project),modes={},out=[];for(const node of nodes)if(node.type==='mode')modes[key(project.board,node.pin)]=node.mode;
+ for(const node of nodes){if(node.type==='write'&&modes[key(project.board,node.pin)]!=='OUTPUT')out.push(`${node.pin}: pinMode OUTPUT이 없어 디지털 출력을 차단합니다`);if(['button','digitalRead','pir','tilt'].includes(node.type)&&!['INPUT','INPUT_PULLUP'].includes(modes[key(project.board,node.pin)]))out.push(`${node.pin}: INPUT 또는 INPUT_PULLUP 설정을 권장합니다`);}
+ const usedPins=[];for(const node of nodes)for(const field of ['pin','trig','echo'])if(node[field]!==undefined)usedPins.push(String(node[field]));if(usedPins.some(pin=>['0','1'].includes(pin)))out.push('D0/D1은 하드웨어 시리얼과 충돌할 수 있습니다');return [...new Set(out)];
+}
+
 const cppString=s=>'"'+String(s).replace(/["\\\x00-\x1f\x7f]/g,c=>c==='"'?'\\"':c==='\\'?'\\\\':'\\'+c.charCodeAt(0).toString(8).padStart(3,'0'))+'"';
+const reserved=new Set(['auto','bool','break','case','char','class','const','continue','default','do','double','else','enum','extern','false','float','for','goto','if','int','long','namespace','new','private','protected','public','return','short','signed','sizeof','static','struct','switch','template','this','true','typedef','union','unsigned','using','virtual','void','volatile','while']);
+export function safeIdentifier(name){let value=String(name||'variable').normalize('NFKD').replace(/[^a-zA-Z0-9_]/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'');if(!value)value='variable';if(!/^[a-zA-Z_]/.test(value))value='variable_'+value;if(reserved.has(value))value='var_'+value;return value}
+function expressionType(node){if(['temperature','dhtTemperature','dhtHumidity','ultrasonic'].includes(node?.type))return 'float';if(node?.type==='map')return expressionType(node.value);return 'int'}
+
 export function generate(project){
- const all=[...project.setup,...project.loop];
- const sensorVariables={
-  read:{name:'digitalValue',declaration:'int digitalValue = LOW;'},
-  button:{name:'buttonState',declaration:'int buttonState = HIGH;'},
-  analog:{name:'analogValue',declaration:'int analogValue = 0;'},
-  ldr:{name:'lightValue',declaration:'int lightValue = 0;'},
-  pot:{name:'potentiometerValue',declaration:'int potentiometerValue = 0;'},
-  ultrasonic:{name:'distanceCm',declaration:'float distanceCm = 0.0;'}
- };
- const usesSerial=all.some(b=>b.type==='print');
- const sonar=all.some(b=>b.type==='ultrasonic');
- const declarations=[];
- for(const type of Object.keys(sensorVariables))if(all.some(b=>b.type===type))declarations.push(sensorVariables[type].declaration);
- if(all.some(b=>b.type==='increment'))declarations.push('long counter = 0;');
- let source=null;
- let needsFallback=false;
- for(const b of all){
-  if(sensorVariables[b.type])source=sensorVariables[b.type].name;
-  else if(b.type==='increment')source='counter';
-  else if(['distanceLed','mapValue','threshold'].includes(b.type)||(b.type==='print'&&b.source==='value')){
-   if(!source){needsFallback=true;source='value';}
-  }
- }
- if(needsFallback)declarations.unshift('float value = 0;');
- const state={source:null};
- const valueName=()=>state.source||'value';
- const statement=b=>{
-  if(sensorVariables[b.type]){
-   state.source=sensorVariables[b.type].name;
-   if(b.type==='ultrasonic')return `${state.source} = readDistanceCm(${b.trig}, ${b.echo});`;
-   if(['analog','ldr','pot'].includes(b.type))return `${state.source} = analogRead(${b.pin});`;
-   return `${state.source} = digitalRead(${b.pin});`;
-  }
-  switch(b.type){
-   case 'distanceLed':return `digitalWrite(${b.pin}, (${valueName()} >= 0 && ${valueName()} < ${b.threshold}) ? HIGH : LOW);`;
-   case 'mapValue':return `${valueName()} = map((long)${valueName()}, ${[b.inMin,b.inMax,b.outMin,b.outMax].join(', ')});`;
-   case 'increment':state.source='counter';return `counter += ${b.step};`;
-   case 'threshold':return `digitalWrite(${b.pin}, ${valueName()} ${b.operator} ${Number(b.threshold)} ? HIGH : LOW);`;
-   case 'mode':return `pinMode(${b.pin}, ${b.mode});`;
-   case 'write':case 'led':return `digitalWrite(${b.pin}, ${b.state});`;
-   case 'delay':return `delay(${Number(b.ms)});`;
-   case 'print':return `Serial.println(${b.source==='text'?cppString(b.text):valueName()});`;
-   default:return '// 알 수 없는 블록';
-  }
- };
- const setupLines=project.setup.map(b=>'  '+statement(b)).join('\n');
- const loopLines=project.loop.map(b=>'  '+statement(b)).join('\n');
- const setupBody=[usesSerial?'  Serial.begin(9600);':'',setupLines].filter(Boolean).join('\n');
- const globals=declarations.join('\n');
- return `// CubeLink Starter v1.5.0 · ${boards[project.board]?.name || project.board}\n\n${globals?globals+'\n\n':''}${sonar?`// HC-SR04: timeout returns -1 cm\nfloat readDistanceCm(uint8_t trig, uint8_t echo) {\n  digitalWrite(trig, LOW);\n  delayMicroseconds(2);\n  digitalWrite(trig, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(trig, LOW);\n  unsigned long duration = pulseIn(echo, HIGH, 30000UL);\n  return duration == 0 ? -1.0f : duration * 0.0343f / 2.0f;\n}\n\n`:''}void setup() {\n${setupBody}\n}\n\nvoid loop() {\n${loopLines}\n}\n`;
+ const issues=errors(project);if(issues.length)return '// 블록 오류\n// '+issues.join('\n// ');const nodes=walkProject(project),variables=new Map(),includes=new Set(),globals=new Set(),helpers=new Set(),autoSetup=[];
+ for(const node of nodes){if(node.type==='setVariable'){const name=safeIdentifier(node.name),type=expressionType(node.value);if(!variables.has(name)||type==='float')variables.set(name,type);}if(node.type==='changeVariable')variables.set(safeIdentifier(node.name),'long');if(node.type==='variable'&&!variables.has(safeIdentifier(node.name)))variables.set(safeIdentifier(node.name),'int');}
+ for(const [name,type]of variables)globals.add(`${type} ${name} = ${type==='float'?'0.0':'0'};`);const dhtPins=[...new Set(nodes.filter(n=>['dhtTemperature','dhtHumidity'].includes(n.type)).map(n=>n.pin))];if(dhtPins.length){includes.add('#include <DHT.h>');for(const pin of dhtPins){globals.add(`DHT dht${pin}(${pin}, DHT11);`);autoSetup.push(`dht${pin}.begin();`);}}
+ if(nodes.some(n=>n.type==='ultrasonic'))helpers.add(`float readUltrasonic(int trig, int echo) {
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  unsigned long duration = pulseIn(echo, HIGH, 30000UL);
+  return duration == 0 ? -1.0f : duration * 0.0343f / 2.0f;
+}`);
+ const expr=node=>{switch(node.type){case 'number':return String(node.value);case 'variable':return safeIdentifier(node.name);case 'digitalRead':case 'button':case 'pir':case 'tilt':return `digitalRead(${node.pin})`;case 'analogRead':case 'ldr':case 'pot':case 'sound':case 'joystickAxis':return `analogRead(${node.pin})`;case 'temperature':return `((analogRead(${node.pin}) * 5.0 / 1023.0 - 0.5) * 100.0)`;case 'dhtTemperature':return `dht${node.pin}.readTemperature()`;case 'dhtHumidity':return `dht${node.pin}.readHumidity()`;case 'ultrasonic':return `readUltrasonic(${node.trig}, ${node.echo})`;case 'compare':return `(${expr(node.left)} ${node.operator} ${expr(node.right)})`;case 'logic':return `(${expr(node.a)} ${node.operator==='AND'?'&&':'||'} ${expr(node.b)})`;case 'map':return `map((long)${expr(node.value)}, ${node.inMin}, ${node.inMax}, ${node.outMin}, ${node.outMax})`;default:return '0';}};
+ const statements=(list,indent='  ')=>list.map(node=>{switch(node.type){case 'serialBegin':return `${indent}Serial.begin(${node.baud});`;case 'printText':return `${indent}Serial.println(${cppString(node.text)});`;case 'printValue':return `${indent}Serial.println(${expr(node.value)});`;case 'mode':return `${indent}pinMode(${node.pin}, ${node.mode});`;case 'write':return `${indent}digitalWrite(${node.pin}, ${node.state});`;case 'delay':return `${indent}delay(${node.ms});`;case 'setVariable':return `${indent}${safeIdentifier(node.name)} = ${expr(node.value)};`;case 'changeVariable':return `${indent}${safeIdentifier(node.name)} += ${node.delta};`;case 'if':return `${indent}if (${expr(node.condition)}) {\n${statements(node.then,indent+'  ')}\n${indent}} else {\n${statements(node.else,indent+'  ')}\n${indent}}`;default:return `${indent}// 알 수 없는 블록`;}}).join('\n');
+ const header=[...includes,...globals].join('\n'),helper=[...helpers].join('\n\n'),setupCode=[...autoSetup.map(code=>'  '+code),statements(project.setup)].filter(Boolean).join('\n');return `// CubeLink Starter · CubeLink Studio 호환 기초 코드 · ${boards[project.board].name}\n\n${header?header+'\n\n':''}${helper?helper+'\n\n':''}void setup() {\n${setupCode}\n}\n\nvoid loop() {\n${statements(project.loop)}\n}\n`;
 }
-export class Simulation {
- constructor(project,inputs={}){this.project=structuredClone(project);this.inputs=inputs;this.modes={};this.outputs={};this.value=0;this.time=0;this.logs=[];this.faults=[];this.counter=0}
- step(b){const p=this.project.board,k=p1=>key(p,p1);const mode=p1=>this.modes[k(p1)];const fail=s=>{this.faults.push(s);return {error:s,wait:0}};let wait=0;
- if(errors({...this.project,setup:[b],loop:[]}).length)return fail('잘못된 블록 또는 핀');
- switch(b.type){
- case 'distanceLed':if(mode(b.pin)!=='OUTPUT')return fail(b.pin+': OUTPUT 설정 누락 — 출력 차단');this.outputs[k(b.pin)]=(this.value>=0&&this.value<b.threshold)?1:0;break;
- case 'mapValue':this.value=Math.trunc((Math.trunc(this.value)-b.inMin)*(b.outMax-b.outMin)/(b.inMax-b.inMin))+b.outMin;break;
- case 'increment':this.counter+=b.step;this.value=this.counter;break;
- case 'mode':this.modes[k(b.pin)]=b.mode;if(b.mode!=='OUTPUT')delete this.outputs[k(b.pin)];break;
- case 'write':case 'led':if(mode(b.pin)!=='OUTPUT')return fail(`${b.pin}: OUTPUT 설정 누락 — 출력 차단`);this.outputs[k(b.pin)]=b.state==='HIGH'?1:0;break;
- case 'threshold':if(mode(b.pin)!=='OUTPUT')return fail(`${b.pin}: OUTPUT 설정 누락 — 출력 차단`);this.outputs[k(b.pin)]=(b.operator==='<'?this.value<Number(b.threshold):this.value>=Number(b.threshold))?1:0;break;
- case 'read':case 'button':{const external=this.inputs.digital?.[b.pin];this.value=mode(b.pin)==='OUTPUT'?(this.outputs[k(b.pin)]||0):external??(mode(b.pin)==='INPUT_PULLUP'?1:0);break;}
- case 'analog':case 'ldr':case 'pot':this.value=Number(this.inputs.analog?.[b.pin]??0);break;
- case 'ultrasonic':if(mode(b.trig)!=='OUTPUT'||!['INPUT','INPUT_PULLUP'].includes(mode(b.echo)))return fail('초음파 핀 모드 누락 — 트리거 출력 차단');this.outputs[k(b.trig)]=0;{const d=Number(this.inputs.distance??100);const duration=Math.round(d*2/0.0343);this.value=d<0||duration>30000?-1:Math.fround(Math.fround(duration*0.0343)/2);wait=(this.value<0?30:duration/1000)+0.012;}break;
- case 'delay':wait=Number(b.ms);break;
- case 'print':this.logs.push(b.source==='text'?String(b.text):this.value.toFixed(2));break;
- }this.time+=wait;return {wait};
- }
+
+export class Simulation{
+ constructor(project,inputs={}){this.project=structuredClone(project);this.inputs=inputs;this.modes={};this.outputs={};this.variables={};this.value=0;this.time=0;this.logs=[];this.faults=[];}
+ eval(node){let value=0;switch(node.type){case 'number':value=node.value;break;case 'variable':value=this.variables[node.name]??0;break;case 'digitalRead':case 'button':case 'pir':case 'tilt':value=this.inputs.digital?.[node.pin]??(this.modes[key(this.project.board,node.pin)]==='INPUT_PULLUP'?1:0);break;case 'analogRead':case 'ldr':case 'pot':case 'sound':case 'joystickAxis':value=Number(this.inputs.analog?.[node.pin]??0);break;case 'temperature':case 'dhtTemperature':value=Number(this.inputs.temperature??25);break;case 'dhtHumidity':value=Number(this.inputs.humidity??50);break;case 'ultrasonic':value=Number(this.inputs.distance??100);break;case 'compare':{const a=this.eval(node.left),b=this.eval(node.right);value=({"==":a==b,"!=":a!=b,"<":a<b,"<=":a<=b,">":a>b,">=":a>=b})[node.operator]?1:0;break;}case 'logic':value=node.operator==='AND'?(this.eval(node.a)&&this.eval(node.b)?1:0):(this.eval(node.a)||this.eval(node.b)?1:0);break;case 'map':value=Math.trunc((Math.trunc(this.eval(node.value))-node.inMin)*(node.outMax-node.outMin)/(node.inMax-node.inMin))+node.outMin;break;}this.value=Number(value)||0;return value;}
+ execute(list){let wait=0;for(const node of list){const result=this.step(node);wait+=result.wait||0;if(result.error)return {wait,error:result.error};}return {wait};}
+ step(node){let wait=0,nestedTime=false;switch(node.type){case 'serialBegin':break;case 'mode':this.modes[key(this.project.board,node.pin)]=node.mode;break;case 'write':if(this.modes[key(this.project.board,node.pin)]!=='OUTPUT'){const error=`${node.pin}: OUTPUT 설정 누락 — 출력 차단`;this.faults.push(error);return {wait,error};}this.outputs[key(this.project.board,node.pin)]=node.state==='HIGH'?1:0;break;case 'delay':wait=node.ms;break;case 'setVariable':this.variables[node.name]=this.eval(node.value);break;case 'changeVariable':this.variables[node.name]=(this.variables[node.name]??0)+node.delta;this.value=this.variables[node.name];break;case 'printText':this.logs.push(String(node.text));break;case 'printValue':{const value=this.eval(node.value);this.logs.push(Number.isInteger(value)?String(value):Number(value).toFixed(2));break;}case 'if':{const result=this.execute(this.eval(node.condition)?node.then:node.else);wait+=result.wait||0;nestedTime=true;if(result.error)return result;break;}}if(!nestedTime)this.time+=wait;return {wait};}
 }
-export const examples={streetlight:{board:'uno',setup:[block('mode')],loop:[block('ldr'),block('threshold'),block('print'),{...block('delay'),ms:150}]},blink:{board:'uno',setup:[block('mode')],loop:[block('led'),block('delay'),{...block('led'),state:'LOW'},block('delay')]},sensors:{board:'uno',setup:[],loop:[block('ldr'),block('print'),block('pot'),block('print'),{...block('delay'),ms:400}]},distance:{board:'uno',setup:[{...block('mode'),pin:'9'},{...block('mode'),pin:'10',mode:'INPUT'}],loop:[block('ultrasonic'),block('print'),{...block('delay'),ms:300}]},button:{board:'uno',setup:[{...block('mode'),pin:'2',mode:'INPUT_PULLUP'}],loop:[block('button'),block('print'),{...block('delay'),ms:200}]}};
 
-Object.assign(examples,{
- ledOn:{board:'uno',setup:[block('mode')],loop:[block('led'),{...block('delay'),ms:100}]},
- serial3:{board:'uno',setup:[1,2,3].map(n=>({...block('print'),source:'text',text:'Hello CubeLink '+n})),loop:[{...block('delay'),ms:1000}]},
- counter:{board:'uno',setup:[],loop:[block('increment'),block('print'),{...block('delay'),ms:500}]},
-});
+export const examples={
+ ledOn:{board:'uno',setup:[pinMode('13','OUTPUT')],loop:[write('13','HIGH'),wait(100)]},blink:{board:'uno',setup:[pinMode('13','OUTPUT')],loop:[write('13','HIGH'),wait(500),write('13','LOW'),wait(500)]},serial3:{board:'uno',setup:[serial(),...['Hello CubeLink 1','Hello CubeLink 2','Hello CubeLink 3'].map(text=>statement('printText',{text}))],loop:[wait(1000)]},counter:{board:'uno',setup:[serial()],loop:[statement('changeVariable',{name:'counter',delta:1}),printValue(variable('counter')),wait(500)]},
+ button:{board:'uno',setup:[serial(),pinMode('2','INPUT_PULLUP')],loop:[setVariable('buttonState',expression('button',{pin:'2'})),printValue(variable('buttonState')),wait(200)]},buttonLed:{board:'uno',setup:[pinMode('2','INPUT_PULLUP'),pinMode('13','OUTPUT')],loop:[setVariable('buttonState',expression('button',{pin:'2'})),ifElse(compare(variable('buttonState'),'==',number(0)),[write('13','HIGH')],[write('13','LOW')]),wait(50)]},pot:{board:'uno',setup:[serial()],loop:[setVariable('potentiometerValue',expression('pot',{pin:'A1'})),printValue(variable('potentiometerValue')),wait(200)]},ldr:{board:'uno',setup:[serial()],loop:[setVariable('lightValue',expression('ldr',{pin:'A0'})),printValue(variable('lightValue')),wait(200)]},sensors:{board:'uno',setup:[serial()],loop:[setVariable('lightValue',expression('ldr',{pin:'A0'})),printValue(variable('lightValue')),setVariable('potentiometerValue',expression('pot',{pin:'A1'})),printValue(variable('potentiometerValue')),wait(400)]},
+ distance:{board:'uno',setup:[serial()],loop:[setVariable('distanceCm',expression('ultrasonic',{trig:'9',echo:'10'})),printValue(variable('distanceCm')),wait(300)]},distanceLed:{board:'uno',setup:[serial(),pinMode('13','OUTPUT')],loop:[setVariable('distanceCm',expression('ultrasonic',{trig:'9',echo:'10'})),ifElse(expression('logic',{operator:'AND',a:compare(variable('distanceCm'),'>=',number(0)),b:compare(variable('distanceCm'),'<',number(20))}),[write('13','HIGH')],[write('13','LOW')]),printValue(variable('distanceCm')),wait(100)]},streetlight:{board:'uno',setup:[serial(),pinMode('13','OUTPUT')],loop:[setVariable('lightValue',expression('ldr',{pin:'A0'})),ifElse(compare(variable('lightValue'),'<',number(500)),[write('13','HIGH')],[write('13','LOW')]),printValue(variable('lightValue')),wait(150)]},
+ temperature:{board:'uno',setup:[serial()],loop:[setVariable('temperatureC',expression('temperature',{pin:'A2'})),printValue(variable('temperatureC')),wait(500)]},dht:{board:'uno',setup:[serial()],loop:[setVariable('temperatureC',expression('dhtTemperature',{pin:'3'})),setVariable('humidity',expression('dhtHumidity',{pin:'3'})),printValue(variable('temperatureC')),printValue(variable('humidity')),wait(1000)]},sound:{board:'uno',setup:[serial()],loop:[setVariable('soundLevel',expression('sound',{pin:'A2'})),printValue(variable('soundLevel')),wait(100)]},pir:{board:'uno',setup:[serial(),pinMode('3','INPUT')],loop:[setVariable('motionDetected',expression('pir',{pin:'3'})),printValue(variable('motionDetected')),wait(200)]},tilt:{board:'uno',setup:[serial(),pinMode('4','INPUT_PULLUP')],loop:[setVariable('tiltState',expression('tilt',{pin:'4'})),printValue(variable('tiltState')),wait(200)]},joystick:{board:'uno',setup:[serial(),pinMode('2','INPUT_PULLUP')],loop:[setVariable('joystickX',expression('joystickAxis',{pin:'A0',axis:'X'})),setVariable('joystickY',expression('joystickAxis',{pin:'A1',axis:'Y'})),setVariable('joystickButton',expression('button',{pin:'2'})),printValue(variable('joystickX')),printValue(variable('joystickY')),printValue(variable('joystickButton')),wait(200)]}
+};
 
-Object.assign(examples,{
- buttonLed:{board:'uno',setup:[{...block('mode'),pin:'2',mode:'INPUT_PULLUP'},block('mode')],loop:[block('button'),{...block('threshold'),threshold:1},{...block('delay'),ms:50}]},
- pot:{board:'uno',setup:[],loop:[block('pot'),block('print'),{...block('delay'),ms:200}]},
- ldr:{board:'uno',setup:[],loop:[block('ldr'),block('print'),{...block('delay'),ms:200}]},
- distanceLed:{board:'uno',setup:[{...block('mode'),pin:'9'},{...block('mode'),pin:'10',mode:'INPUT'},block('mode')],loop:[block('ultrasonic'),block('distanceLed'),block('print'),{...block('delay'),ms:100}]}
-});
+export function migrateLegacyProject(project){
+ const next={board:project.board,setup:[],loop:[],mission:project.mission};let current='value';const convert=list=>{const out=[];for(const node of list){switch(node.type){case 'mode':case 'write':case 'delay':out.push(structuredClone(node));break;case 'led':out.push(write(node.pin,node.state));break;case 'print':out.push(node.source==='text'?statement('printText',{text:node.text}):printValue(variable(current)));break;case 'increment':current='counter';out.push(statement('changeVariable',{name:'counter',delta:node.step}));break;case 'read':current='digitalValue';out.push(setVariable(current,expression('digitalRead',{pin:node.pin})));break;case 'button':current='buttonState';out.push(setVariable(current,expression('button',{pin:node.pin})));break;case 'analog':current='analogValue';out.push(setVariable(current,expression('analogRead',{pin:node.pin})));break;case 'ldr':current='lightValue';out.push(setVariable(current,expression('ldr',{pin:node.pin})));break;case 'pot':current='potentiometerValue';out.push(setVariable(current,expression('pot',{pin:node.pin})));break;case 'ultrasonic':current='distanceCm';out.push(setVariable(current,expression('ultrasonic',{trig:node.trig,echo:node.echo})));break;case 'threshold':out.push(ifElse(compare(variable(current),node.operator,number(node.threshold)),[write(node.pin,'HIGH')],[write(node.pin,'LOW')]));break;case 'distanceLed':out.push(ifElse(expression('logic',{operator:'AND',a:compare(variable(current),'>=',number(0)),b:compare(variable(current),'<',number(node.threshold))}),[write(node.pin,'HIGH')],[write(node.pin,'LOW')]));break;case 'mapValue':out.push(setVariable(current,expression('map',{value:variable(current),inMin:node.inMin,inMax:node.inMax,outMin:node.outMin,outMax:node.outMax})));break;}}return out;};next.setup=convert(project.setup||[]);next.loop=convert(project.loop||[]);if(walkProject(next).some(n=>['printText','printValue'].includes(n.type))&&!next.setup.some(n=>n.type==='serialBegin'))next.setup.unshift(serial());return next;
+}

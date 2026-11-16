@@ -1,16 +1,17 @@
-import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.5.0-ai5';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-ai5';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.5.0-studio1';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-studio1';
 import {initLayout} from './layout.js?v=1.5.0';
-import {parseProject,serializeProject} from './project-store.js?v=1.5.0-ai5';
-import {lessons,missionOrder} from './lessons.js?v=1.5.0';
-import {renderWiring} from './wiring.js?v=1.5.0-ai5';
+import {parseProject,serializeProject} from './project-store.js?v=1.5.0-studio1';
+import {lessons,missionOrder} from './lessons.js?v=1.5.0-studio1';
+import {renderWiring} from './wiring.js?v=1.5.0-studio1';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-ai5';
-import {initAiMaker} from './ai-maker-ui.js?v=1.0.0-ai5';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-studio1';
+import {initAiMaker} from './ai-maker-ui.js?v=1.5.0-studio1';
 const $=id=>document.getElementById(id);
 let activeMission='ledOn',diagramSignature='',completed=new Set();
 let project=blankProject('ledOn'),sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;
-let inputs={analog:{A0:512,A1:512},digital:{},distance:100},logs={sim:[],hardware:[]};
+function freshInputs(){return {analog:{A0:512,A1:512,A2:512},digital:{},distance:100,temperature:25,humidity:50}}
+let inputs=freshInputs(),logs={sim:[],hardware:[]};
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').style.display='none',3500)}
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
 function optionSelect(values,value){const s=el('select');values.forEach(v=>{const o=el('option','',v);o.value=v;s.append(o)});s.value=value;if(s.selectedIndex<0){const o=el('option','',value+' (지원 안 됨)');o.value=value;s.append(o);s.value=value}return s}
@@ -21,12 +22,14 @@ function restore(){try{const text=localStorage.getItem(PRACTICE_KEY);if(text){pr
 function loadEditor(){loading=true;Blockly.Events.disable();try{fromModel(Blockly,workspace,project);workspace.clearUndo();modelSignature=JSON.stringify(project)}finally{Blockly.Events.enable();loading=false}Blockly.svgResize(workspace);workspace.scrollCenter();}
 function initEditor(){registerBlocks(Blockly,()=>project.board);workspace=Blockly.inject('blocklyEditor',{toolbox:toolbox(),renderer:'geras',sounds:false,trashcan:false,media:'vendor/media/',grid:{spacing:20,length:3,colour:'#ccc',snap:true},zoom:{controls:false,wheel:true,startScale:.8,maxScale:1.5,minScale:.4,scaleSpeed:1.1},move:{scrollbars:true,drag:true,wheel:true}});loadEditor();workspace.addChangeListener(e=>{if(loading||e.isUiEvent)return;const next={...toModel(workspace,project.board),mission:activeMission};const signature=JSON.stringify(next);if(signature!==modelSignature){stop();project=next;modelSignature=signature;render();autosave()}else updateIssues()});new ResizeObserver(()=>Blockly.svgResize(workspace)).observe($('blocklyEditor'));}
 function updateIssues(){const err=errors(project),warn=warnings(project),loose=orphanCount(workspace);if(loose)warn.push(loose+'개 블록이 setup/loop에 연결되지 않아 실행·코드 생성·프로젝트 저장에서 제외됩니다');$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · 블록을 setup/loop 안에 끼워 넣으세요';$('issues').className=err.length||warn.length?'':'ok';}
-function render(){ $('example').value=activeMission;$('board').value=project.board;$('blockCount').textContent=project.setup.length+project.loop.length+' BLOCKS';const err=errors(project),warn=warnings(project);$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · 읽은 값은 value에 저장됩니다';$('issues').className=err.length||warn.length?'':'ok';$('run').disabled=err.length>0||project.setup.length+project.loop.length===0;$('download').disabled=err.length>0;$('copy').disabled=err.length>0;$('code').textContent=err.length?'// 블록의 핀 또는 값을 수정하세요.\n// '+err.join('\n// '):generate(project);const watch=$('watchPin').value;const opts=pins(project.board);$('watchPin').replaceChildren(...opts.map(p=>{const o=el('option','',p.startsWith('A')?p:'D'+p);o.value=p;return o}));$('watchPin').value=opts.includes(watch)?watch:'13';renderInputs();updateCircuit();updateIssues()}
-function renderInputs(){const host=$('inputs');host.replaceChildren();const title=el('div','eyebrow','가상 센서 입력 · 실행 중 조절 가능');host.append(title);const all=[...project.setup,...project.loop],analog=[...new Set(all.filter(b=>['analog','ldr','pot'].includes(b.type)).map(b=>b.pin))],digital=[...new Set(all.filter(b=>['button','read'].includes(b.type)).map(b=>b.pin))];
+function render(){ $('example').value=activeMission;$('board').value=project.board;$('blockCount').textContent=blockCount(project)+' BLOCKS';const err=errors(project),warn=warnings(project);$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · Studio 방식으로 센서값과 변수를 연결했습니다';$('issues').className=err.length||warn.length?'':'ok';$('run').disabled=err.length>0||project.setup.length+project.loop.length===0;$('download').disabled=err.length>0;$('copy').disabled=err.length>0;$('code').textContent=err.length?'// 블록의 핀 또는 값을 수정하세요.\n// '+err.join('\n// '):generate(project);const watch=$('watchPin').value;const opts=pins(project.board);$('watchPin').replaceChildren(...opts.map(p=>{const o=el('option','',p.startsWith('A')?p:'D'+p);o.value=p;return o}));$('watchPin').value=opts.includes(watch)?watch:'13';renderInputs();updateCircuit();updateIssues()}
+function renderInputs(){const host=$('inputs');host.replaceChildren();const title=el('div','eyebrow','가상 센서 입력 · 실행 중 조절 가능');host.append(title);const all=walkProject(project),analog=[...new Set(all.filter(b=>['analogRead','ldr','pot','sound','joystickAxis'].includes(b.type)).map(b=>b.pin))],digital=[...new Set(all.filter(b=>['button','digitalRead','pir','tilt'].includes(b.type)).map(b=>b.pin))];
 function slider(label,value,min,max,change){const row=el('div','input-row'),l=el('label','',label),out=el('output','',value),input=el('input');input.type='range';input.min=min;input.max=max;input.step=1;input.value=value;input.setAttribute('aria-label',label);l.append(out);row.append(l,input);input.oninput=()=>{out.textContent=input.value;change(Number(input.value));updateCircuit()};host.append(row)}
 analog.forEach(pin=>{inputs.analog[pin]??=512;slider(pin+(' · 센서 입력 (ADC)'),inputs.analog[pin],0,1023,v=>inputs.analog[pin]=v)});
 digital.forEach(pin=>{const row=el('div','input-row'),label=el('label','',pin+' · 디지털 / 버튼'),s=optionSelect(['auto','0','1'],String(inputs.digital[pin]??'auto'));s.options[0].textContent='미연결 (풀업 / 기본값)';s.options[1].textContent='GND · 누름 (0)';s.options[2].textContent='5V · HIGH (1)';s.setAttribute('aria-label',pin+' 버튼 입력');s.onchange=()=>{if(s.value==='auto')delete inputs.digital[pin];else inputs.digital[pin]=Number(s.value)};row.append(label,s);host.append(row)});
-if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>b.type==='ultrasonic'))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
+if(all.some(b=>['temperature','dhtTemperature'].includes(b.type)))slider('온도 (°C)',inputs.temperature,-20,80,v=>inputs.temperature=v);
+if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100,v=>inputs.humidity=v);
+if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
 function updateCircuit(){
  const diagramProject=$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
  const signature=JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
@@ -34,7 +37,7 @@ function updateCircuit(){
  for(const node of $('circuit').querySelectorAll('[data-led-pin]'))node.setAttribute('fill',sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0');
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
  $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW'))].filter(Boolean).join(' · ');
- $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='value = '+(sim?.value||0).toFixed(2);
+ $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);
 }
 function appendLog(source,line){logs[source].push(line);if(logs[source].length>300)logs[source].splice(0,logs[source].length-300);if($('monitorSource').value===source)showLogs()}
 function showLogs(){$('serialLog').textContent=logs[$('monitorSource').value].join('\n');$('serialLog').scrollTop=$('serialLog').scrollHeight}
@@ -50,7 +53,7 @@ async function disconnect(){if(closing)return;closing=true;connectionUI();try{if
 async function receive(activePort){const decoder=new TextDecoder();let pending='';try{reader=activePort.readable.getReader();while(true){const {value,done}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});const lines=pending.split(/\r?\n/);pending=lines.pop();lines.forEach(s=>appendLog('hardware',s));if(pending.length>4096){appendLog('hardware',pending);pending=''}}pending+=decoder.decode();if(pending)appendLog('hardware',pending)}catch(err){if(!closing)appendLog('hardware','수신 오류: '+err.message)}finally{reader?.releaseLock();reader=null;if(!closing)await disconnect()}}
 $('serialConnect').onclick=async()=>{if(port){await disconnect();return}if(!('serial'in navigator)||!window.isSecureContext){toast('Web Serial은 데스크톱 Chrome의 HTTPS 또는 localhost가 필요합니다');return}connecting=true;connectionUI();let selected;try{selected=await navigator.serial.requestPort();await selected.open({baudRate:9600});port=selected;writer=port.writable.getWriter();$('monitorSource').value='hardware';appendLog('hardware','── USB 연결 · 9600 baud · 업로드 기능 없음 ──');receive(port)}catch(err){if(selected&&port)await disconnect();toast(err.name==='NotFoundError'?'포트 선택을 취소했습니다':'연결 실패: '+err.message)}finally{connecting=false;connectionUI()}};
 $('sendForm').onsubmit=async e=>{e.preventDefault();if(!writer){toast('실제 USB를 먼저 연결하세요');return}const text=$('serialText').value;try{await writer.write(new TextEncoder().encode(text+'\n'));appendLog('hardware','> '+text);$('serialText').value=''}catch(err){toast('전송 실패: '+err.message)}};
-prepareMissions();initCircuitView();restore();initEditor();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission;project=next;inputs={analog:{A0:512,A1:512},digital:{},distance:100};logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 기초 설계 적용 · '+lessons[mission].title+' ──')},toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
+prepareMissions();initCircuitView();restore();initEditor();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission;project=next;inputs=freshInputs();logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 기초 설계 적용 · '+lessons[mission].title+' ──')},toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
 
 function prepareMissions(){
  $('example').replaceChildren(...missionOrder.map(id=>{const o=el('option','',lessons[id].title);o.value=id;return o}));
@@ -70,7 +73,7 @@ function switchMission(id,reset=false){
  autosave();stop();activeMission=id;let restored=null;
  if(!reset)try{const text=localStorage.getItem(PRACTICE_KEY+':'+id);if(text)restored=parseProject(text);}catch{}
  project=restored||blankProject(id,project.board);project.mission=id;
- inputs={analog:{A0:512,A1:512},digital:{},distance:100};logs.sim=[];
+ inputs=freshInputs();logs.sim=[];
  loadEditor();render();showLesson();autosave();appendLog('sim','── '+lessons[id].title+' · '+(restored?'내 풀이 복원':'빈 풀이 준비')+' ──');
  toast(restored?'이 미션의 내 풀이를 복원했습니다.':'빈 칸에 블록을 연결해 직접 풀어 보세요.');
 }

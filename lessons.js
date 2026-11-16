@@ -56,7 +56,7 @@ export const lessons={
       "새 실행 안내 다음에 세 문장이 표시됩니다.",
       "setup과 loop 출력 횟수 차이를 설명합니다."
     ],
-    "note": "를 스타터의 명시적인 세 번 출력 실습으로 옮겼습니다. Serial.begin(9600)은 자동 생성됩니다."
+    "note": "시리얼 통신 시작 블록과 세 개의 문장 출력 블록을 직접 연결하는 실습입니다."
   },
   "counter": {
     "title": "04. 숫자 카운터",
@@ -66,15 +66,15 @@ export const lessons={
       "외부 배선 없이 USB만 연결합니다."
     ],
     "steps": [
-      "counter 증가 → value 출력 → 기다리기 순서를 봅니다.",
-      "시뮬레이션 모니터에서 1.00~5.00 이상 증가하는지 확인합니다.",
-      "증가량을 2로 바꿔 2.00, 4.00, 6.00을 확인합니다."
+      "counter 변수 바꾸기 → counter 값 출력 → 기다리기 순서를 봅니다.",
+      "시뮬레이션 모니터에서 1, 2, 3처럼 증가하는지 확인합니다.",
+      "증가량을 2로 바꿔 2, 4, 6을 확인합니다."
     ],
     "checks": [
       "순서대로 값이 증가합니다.",
       "다시 실행하면 0부터 초기화된 뒤 1이 나옵니다."
     ],
-    "note": "일반 변수 편집 대신 전용 counter 블록을 제공합니다. 증가 후 value에도 같은 값을 넣습니다."
+    "note": "CubeLink Studio와 같은 변수 블록으로 counter를 만들고, 그 값을 바꾸고 읽습니다."
   },
   "button": {
     "title": "05. 버튼 입력 읽기",
@@ -86,9 +86,9 @@ export const lessons={
     ],
     "steps": [
       "버튼 미션을 선택하고 D2 INPUT_PULLUP을 확인합니다.",
-      "시뮬레이션에서 미연결은 1.00, GND·누름은 0.00인지 확인합니다.",
+      "시뮬레이션에서 미연결은 1, GND·누름은 0인지 확인합니다.",
       "실제 보드에 업로드한 후 버튼을 누르고 떼며 시리얼 값을 봅니다.",
-      "고급 실험: 버튼 읽기 다음에 조건 LED 블록을 넣고 value < 1이면 D13을 켜 봅니다. setup에 D13 OUTPUT도 추가합니다."
+      "확장 실험: buttonState = 0 조건 블록 안에 D13 켜기를 넣습니다. setup에는 D13 OUTPUT도 추가합니다."
     ],
     "checks": [
       "버튼을 누르면 0, 떼면 1을 설명할 수 있습니다.",
@@ -185,8 +185,8 @@ export const lessons={
       "실제 보드에서는 센서 앞 10~100cm에 평평한 물체를 두고 비교합니다."
     ],
     "checks": [
-      "100cm 설정 시 약 100.00이 표시됩니다.",
-      "무응답은 -1.00이며 0cm와 다릅니다."
+      "100cm 설정 시 약 100이 표시됩니다.",
+      "무응답은 -1이며 0cm와 다릅니다."
     ],
     "note": "시뮬레이터는 거리 입력 모델입니다. 반사각, 재질, 간섭 등 실제 센서 오차는 모델링하지 않습니다."
   },
@@ -199,7 +199,7 @@ export const lessons={
       "D13 → 220~330Ω 저항 → LED 긴 다리(+), LED 짧은 다리(−) → GND."
     ],
     "steps": [
-      "초음파 읽기 → 거리 조건 LED → 시리얼 출력 순서를 봅니다.",
+      "distanceCm 변수에 초음파 거리를 저장하고, 비교·논리 조건으로 LED를 제어한 뒤 값을 출력하는 순서를 봅니다.",
       "가상 거리를 10cm로 낮추면 켜지고 30cm로 올리면 꺼집니다.",
       "무응답(-1)에서는 LED가 꺼집니다."
     ],
@@ -226,9 +226,19 @@ export const lessons={
     ],
     "checks": [
       "기준값 양쪽에서 LED 상태가 바뀝니다.",
-      "setup의 D13 OUTPUT을 빼면 조건 LED 출력도 차단됩니다."
+      "setup의 D13 OUTPUT을 빼면 조건문 안의 LED 출력도 차단됩니다."
     ],
-    "note": "조건 LED 블록은 마지막으로 읽은 value를 사용합니다. 센서 읽기 블록을 먼저 연결하세요. 경계에서 깜빡임을 줄이는 히스테리시스는 다음 단계입니다."
+    "note": "lightValue 변수에 조도 값을 저장한 뒤 조건에서 읽습니다. 경계에서 깜빡임을 줄이는 히스테리시스는 다음 단계입니다."
   }
 };
-export const missionOrder=["ledOn","blink","serial3","counter","button","buttonLed","pot","ldr","sensors","distance","distanceLed","streetlight"];
+
+Object.assign(lessons,{
+  temperature:{title:'13. 온도 센서 읽기',time:'15분',goal:'TMP36의 아날로그 전압을 섭씨 온도로 변환합니다.',wiring:['TMP36의 전원·GND·VOUT 핀을 데이터시트로 확인하고 VOUT을 A2에 연결합니다.'],steps:['temperatureC 변수에 TMP36 온도 블록을 저장합니다.','시리얼 모니터에서 온도 변화를 확인합니다.'],checks:['온도가 섭씨 값으로 표시됩니다.','ADC 전압을 온도로 변환하는 이유를 설명합니다.'],note:'TMP36과 LM35는 변환식이 다릅니다. 부품명을 반드시 확인하세요.'},
+  dht:{title:'14. 온습도 센서 읽기',time:'15분',goal:'DHT11에서 온도와 습도를 각각 읽습니다.',wiring:['DHT11 VCC → 5V, GND → GND, DATA → D3. 단품 센서는 풀업 저항이 필요할 수 있습니다.'],steps:['온도와 습도 값 블록을 서로 다른 변수에 저장합니다.','두 값을 시리얼로 차례로 출력합니다.'],checks:['온도와 습도가 별도 변수로 표시됩니다.','DHT 라이브러리 초기화 코드를 찾을 수 있습니다.'],note:'DHT11은 빠르게 연속 측정하지 말고 약 1초 이상 간격을 둡니다.'},
+  sound:{title:'15. 소리 센서 읽기',time:'10분',goal:'마이크 모듈의 아날로그 소리 크기를 읽습니다.',wiring:['소리 센서 VCC → 5V, GND → GND, AO → A2.'],steps:['박수나 주변 소리에 따라 A2 값이 변하는지 관찰합니다.','기준값을 정해 큰 소리를 구분해 봅니다.'],checks:['조용할 때와 소리가 날 때 값이 달라집니다.'],note:'이 값은 데시벨(dB)이 아니라 모듈의 원시 ADC 값입니다.'},
+  pir:{title:'16. PIR 움직임 감지',time:'15분',goal:'PIR 센서의 디지털 움직임 신호를 읽습니다.',wiring:['PIR VCC → 5V, GND → GND, OUT → D3.'],steps:['D3을 INPUT으로 설정합니다.','움직임 감지값 0/1을 시리얼로 확인합니다.'],checks:['움직임이 있을 때 감지값이 바뀝니다.'],note:'PIR 센서는 전원을 넣은 뒤 안정화 시간이 필요합니다.'},
+  tilt:{title:'17. 기울기 센서 읽기',time:'10분',goal:'기울기 스위치의 접점 상태를 디지털 값으로 읽습니다.',wiring:['기울기 스위치 한쪽 → D4, 다른 쪽 → GND. INPUT_PULLUP을 사용합니다.'],steps:['보드를 기울였을 때 값이 바뀌는지 확인합니다.','INPUT_PULLUP의 0/1 방향을 설명합니다.'],checks:['기울기 상태에 따라 시리얼 값이 바뀝니다.'],note:'센서 방향과 제품 구조에 따라 0/1 상태가 반대로 보일 수 있습니다.'},
+  joystick:{title:'18. 조이스틱 X·Y·버튼',time:'15분',goal:'조이스틱의 두 아날로그 축과 버튼을 함께 읽습니다.',wiring:['VRx → A0, VRy → A1, SW → D2, VCC → 5V, GND → GND.'],steps:['X축과 Y축을 서로 다른 변수에 저장합니다.','버튼은 INPUT_PULLUP으로 읽습니다.','세 값을 시리얼로 차례로 출력합니다.'],checks:['중앙에서 X·Y가 약 512입니다.','버튼을 누르면 값이 0으로 바뀝니다.'],note:'실제 조이스틱의 중심값은 정확히 512가 아닐 수 있습니다.'}
+});
+
+export const missionOrder=["ledOn","blink","serial3","counter","button","buttonLed","pot","ldr","sensors","distance","distanceLed","streetlight","temperature","dht","sound","pir","tilt","joystick"];

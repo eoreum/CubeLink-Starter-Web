@@ -1,20 +1,26 @@
-import {boards,key,errors} from './engine.js?v=1.5.0-ai5';
+import {boards,key,errors,walkProject} from './engine.js?v=1.5.0-studio1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
-  const all=[...project.setup,...project.loop],components=[],seen=new Set();
+  const all=walkProject(project),components=[],seen=new Set();
   const add=(id,label,nets,note,kind)=>{if(!seen.has(id)){components.push({id,label,nets,note,kind});seen.add(id)}};
   const net=(source,terminal,color='#c28a2d')=>({source,terminal,color});
   const supply=[net('5V','VCC / +','#d55959'),net('GND','GND / −','#405768')];
-  const outputs=new Set(all.filter(b=>['write','led','threshold','distanceLed'].includes(b.type)).map(b=>key(project.board,b.pin)));
+  const outputs=new Set(all.filter(b=>b.type==='write').map(b=>key(project.board,b.pin)));
   for(const b of all) {
-    if(['write','led','threshold','distanceLed'].includes(b.type))add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
+    if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
     if(b.type==='ldr')add('ldr-'+b.pin,'조도 센서 · LDR 분압',[net('5V','10kΩ 고정 저항의 한쪽','#d55959'),net(b.pin,'저항과 LDR의 접점','#27959b'),net('GND','LDR의 다른 쪽','#405768')],'5V — 10kΩ — [접점: '+b.pin+'] — LDR — GND. 이 구성은 어두울수록 ADC가 작아집니다.','ldr');
     if(b.type==='pot')add('pot-'+b.pin,'가변저항',[net('5V','한쪽 끝 단자','#d55959'),net(b.pin,'가운데 단자 (와이퍼)','#27959b'),net('GND','반대쪽 끝 단자','#405768')],'보통 10kΩ 가변저항. 양 끝 방향을 바꾸면 값이 증가하는 방향도 바뀝니다.','pot');
-    if(b.type==='analog')add('analog-'+b.pin,'아날로그 센서 모듈',[...supply,net(b.pin,'OUT / 신호 (0~5V)','#27959b')],'모듈의 실제 OUT/VCC/GND 표기를 확인하세요. 5V 보드 입력 범위를 넘기지 마세요.','analog');
-    if(['button','read'].includes(b.type)&&!outputs.has(key(project.board,b.pin))){const pullup=all.some(x=>x.type==='mode'&&key(project.board,x.pin)===key(project.board,b.pin)&&x.mode==='INPUT_PULLUP');
+    if(b.type==='analogRead')add('analog-'+b.pin,'아날로그 센서 모듈',[...supply,net(b.pin,'OUT / 신호 (0~5V)','#27959b')],'모듈의 실제 OUT/VCC/GND 표기를 확인하세요. 5V 보드 입력 범위를 넘기지 마세요.','analog');
+    if(['button','digitalRead'].includes(b.type)&&!outputs.has(key(project.board,b.pin))){const pullup=all.some(x=>x.type==='mode'&&key(project.board,x.pin)===key(project.board,b.pin)&&x.mode==='INPUT_PULLUP');
       add('button-'+b.pin,'버튼 / 디지털 입력',pullup?[net(pinName(b.pin),'버튼의 접점 1'),net('GND','버튼의 접점 2','#405768')]:[net('5V','버튼 접점 1','#d55959'),net(pinName(b.pin),'버튼 접점 2 + 10kΩ 저항 한쪽'),net('GND','10kΩ 저항 다른 쪽','#405768')],pullup?'INPUT_PULLUP: 누르면 0, 놓으면 1. 4핀 버튼의 서로 다른 접점을 사용하세요.':'INPUT 외부 풀다운 구성: 놓으면 0, 누르면 1. 외부 10kΩ 저항을 생략하면 입력이 불안정할 수 있습니다.','button');}
     if(b.type==='ultrasonic')add('sonar-'+b.trig+'-'+b.echo,'HC-SR04 초음파 센서',[...supply,net(pinName(b.trig),'TRIG (출력)','#c28a2d'),net(pinName(b.echo),'ECHO (입력)','#27959b')],'센서에 인쇄된 VCC / TRIG / ECHO / GND를 기준으로 연결하세요. 무응답은 -1cm입니다.','sonar');
+    if(b.type==='temperature')add('temperature-'+b.pin,'TMP36 온도 센서',[...supply,net(b.pin,'VOUT / 온도 신호','#27959b')],'평평한 면을 바라볼 때 핀 순서를 반드시 부품 데이터시트와 대조하세요.','analog');
+    if(['dhtTemperature','dhtHumidity'].includes(b.type))add('dht-'+b.pin,'DHT11 온습도 센서',[...supply,net(pinName(b.pin),'DATA','#27959b')],'모듈형이 아닌 센서는 DATA와 VCC 사이에 풀업 저항이 필요할 수 있습니다.','analog');
+    if(b.type==='sound')add('sound-'+b.pin,'소리 센서 모듈',[...supply,net(b.pin,'AO / 소리 크기','#27959b')],'AO 아날로그 출력을 사용합니다. 모듈의 전압 범위를 확인하세요.','analog');
+    if(b.type==='pir')add('pir-'+b.pin,'PIR 인체감지 센서',[...supply,net(pinName(b.pin),'OUT','#27959b')],'전원을 넣은 뒤 센서 안정화 시간이 필요합니다.','analog');
+    if(b.type==='tilt')add('tilt-'+b.pin,'기울기 스위치',[net(pinName(b.pin),'신호 단자','#27959b'),net('GND','반대 단자','#405768')],'INPUT_PULLUP을 사용하면 기울기 상태에 따라 0/1이 바뀝니다.','button');
+    if(b.type==='joystickAxis')add('joystick-'+b.pin,'조이스틱 축 · '+b.axis,[...supply,net(b.pin,b.axis==='X'?'VRx':'VRy','#27959b')],'조이스틱 중심값은 약 512이며 끝으로 움직이면 0 또는 1023에 가까워집니다.','analog');
   }
   return {board:boards[project.board]?.name||project.board,components,issues:errors(project)};
 }

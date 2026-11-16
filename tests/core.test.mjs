@@ -9,6 +9,12 @@ test('all 12 reference answers remain valid and generate Arduino C++',()=>{
  for(const mission of missionOrder){const project={...structuredClone(examples[mission]),mission};assert.deepEqual(errors(project),[],mission);assert.deepEqual(warnings(project),[],mission);const code=generate(project);assert.doesNotMatch(code,/#include\s*<Arduino\.h>/,mission);assert.match(code,/void setup\(\)/,mission);assert.match(code,/void loop\(\)/,mission);}
 });
 test('generated code keeps critical Starter behaviors',()=>{
+ assert.doesNotMatch(generate(examples.blink),/float value\s*=/);
+ assert.doesNotMatch(generate(examples.blink),/Serial\.begin/);
+ assert.doesNotMatch(generate(examples.ledOn),/float value\s*=/);
+ assert.doesNotMatch(generate(examples.serial3),/float value\s*=/);
+ assert.match(generate(examples.serial3),/Serial\.begin\(9600\);/);
+ assert.match(generate(examples.streetlight),/float value\s*=\s*0;/);
  assert.match(generate(examples.blink),/digitalWrite\(13, HIGH\);[\s\S]*delay\(500\);[\s\S]*digitalWrite\(13, LOW\);/);
  assert.match(generate(examples.buttonLed),/pinMode\(2, INPUT_PULLUP\);[\s\S]*digitalRead\(2\);[\s\S]*value < 1/);
  assert.match(generate(examples.distance),/pulseIn\(echo, HIGH, 30000UL\)/);

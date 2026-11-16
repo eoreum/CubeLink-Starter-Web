@@ -17,8 +17,9 @@ export function profilesForBoard(board){
  return [{value:'uno',label:'Uno R3'}];
 }
 export async function connectBridge(){
- const health=await json('/health');if(!health.cliAvailable)throw Error('브리지는 실행 중이지만 Arduino CLI 준비가 필요합니다. setup-bridge.cmd를 실행하세요.');const session=await json('/session');token=session.token;
- const ports=await json('/ports');return {health,ports:ports.ports||[]};
+ try{const options=()=>({signal:AbortSignal.timeout(15000)}),health=await json('/health',options());if(!health.cliAvailable)throw Error('브리지는 실행 중이지만 Arduino CLI 준비가 필요합니다. setup-bridge.cmd를 실행하세요.');const session=await json('/session',options());token=session.token;
+  const ports=await json('/ports',options());return {health,ports:ports.ports||[]};
+ }catch(error){if(error.name==='TimeoutError')throw Error('브리지 확인 시간이 초과되었습니다. Chrome의 로컬 네트워크 접근을 허용한 뒤 다시 시도하세요.');throw error}
 }
 export async function compileSketch({source,profile}){return json('/compile',{method:'POST',body:JSON.stringify({source,profile})})}
 export async function uploadSketch({source,profile,port}){return json('/upload',{method:'POST',body:JSON.stringify({source,profile,port})})}

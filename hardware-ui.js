@@ -1,4 +1,4 @@
-import {BRIDGE_URL,compileSketch,connectBridge,profilesForBoard,uploadSketch} from './hardware-bridge.js?v=1.6.0-hw1';
+import {BRIDGE_URL,compileSketch,connectBridge,profilesForBoard,uploadSketch} from './hardware-bridge.js?v=1.6.0-hw2';
 
 const $=id=>document.getElementById(id);
 export function initHardwareUpload({getBoard,getCode,getErrors,isSerialConnected,releaseSerial,resumeSerial,selectHardwareMonitor,appendHardwareLog,toast}){

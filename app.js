@@ -1,4 +1,4 @@
-import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.5.0-ai3';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples} from './engine.js?v=1.5.0-ai4';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0';
 import {initLayout} from './layout.js?v=1.5.0';
 import {parseProject,serializeProject} from './project-store.js?v=1.5.0';

@@ -14,11 +14,17 @@ test('generated code keeps critical Starter behaviors',()=>{
  assert.doesNotMatch(generate(examples.ledOn),/float value\s*=/);
  assert.doesNotMatch(generate(examples.serial3),/float value\s*=/);
  assert.match(generate(examples.serial3),/Serial\.begin\(9600\);/);
- assert.match(generate(examples.streetlight),/float value\s*=\s*0;/);
+ assert.doesNotMatch(generate(examples.streetlight),/float value\s*=/);
+ assert.match(generate(examples.streetlight),/int lightValue\s*=\s*0;/);
+ assert.match(generate(examples.streetlight),/lightValue = analogRead\(A0\);[\s\S]*lightValue < 500[\s\S]*Serial\.println\(lightValue\);/);
+ assert.match(generate(examples.pot),/int potentiometerValue\s*=\s*0;[\s\S]*potentiometerValue = analogRead\(A1\);[\s\S]*Serial\.println\(potentiometerValue\);/);
+ assert.match(generate(examples.sensors),/int lightValue\s*=\s*0;[\s\S]*int potentiometerValue\s*=\s*0;[\s\S]*Serial\.println\(lightValue\);[\s\S]*Serial\.println\(potentiometerValue\);/);
+ assert.match(generate(examples.button),/int buttonState\s*=\s*HIGH;[\s\S]*buttonState = digitalRead\(2\);[\s\S]*Serial\.println\(buttonState\);/);
+ assert.match(generate(examples.distance),/float distanceCm\s*=\s*0\.0;[\s\S]*distanceCm = readDistanceCm\(9, 10\);[\s\S]*Serial\.println\(distanceCm\);/);
  assert.match(generate(examples.blink),/digitalWrite\(13, HIGH\);[\s\S]*delay\(500\);[\s\S]*digitalWrite\(13, LOW\);/);
- assert.match(generate(examples.buttonLed),/pinMode\(2, INPUT_PULLUP\);[\s\S]*digitalRead\(2\);[\s\S]*value < 1/);
+ assert.match(generate(examples.buttonLed),/pinMode\(2, INPUT_PULLUP\);[\s\S]*buttonState = digitalRead\(2\);[\s\S]*buttonState < 1/);
  assert.match(generate(examples.distance),/pulseIn\(echo, HIGH, 30000UL\)/);
- assert.match(generate(examples.distanceLed),/value >= 0 && value < 20/);
+ assert.match(generate(examples.distanceLed),/distanceCm >= 0 && distanceCm < 20/);
 });
 test('basic idea detection chooses the intended beginner plan',()=>{
  assert.equal(detectPlan('LED를 깜빡이게 하고 싶어요'),'blink');assert.equal(detectPlan('버튼을 누르면 LED가 켜지게'),'buttonLed');assert.equal(detectPlan('어두워지면 켜지는 가로등'),'streetlight');assert.equal(detectPlan('초음파로 가까이 오면 LED 켜기'),'distanceLed');assert.equal(detectPlan('가까이 오면 LED가 켜지게 해 줘'),'distanceLed');assert.equal(detectPlan('가변저항 값을 보고 싶어요'),'pot');

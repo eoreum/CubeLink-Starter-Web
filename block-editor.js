@@ -1,4 +1,4 @@
-import {definitions,block,pins} from './engine.js?v=1.5.0-ai3';
+import {definitions,block,pins} from './engine.js?v=1.5.0-ai4';
 
 // Uses the same vendored Blockly renderer and C-shaped setup/loop structure as CubeLink Studio.
 export function registerBlocks(B,getBoard){
@@ -15,9 +15,9 @@ export function registerBlocks(B,getBoard){
    case 'write':case 'led':row.appendField(type==='led'?'LED 핀':'디지털 핀');pin('pin');row.appendField('을').appendField(dropdown('state',[['켜기 HIGH','HIGH'],['끄기 LOW','LOW']]),'state').appendField('출력');break;
    case 'threshold':row.appendField('읽은 값이').appendField(dropdown('operator',[['미만 <','<'],['이상 ≥','>=']]),'operator').appendField(new B.FieldNumber(500,-1000000,1000000),'threshold').appendField('이면 LED');pin('pin');row.appendField('켜고 아니면 끄기');break;
    case 'delay':row.appendField(new B.FieldNumber(500,0,60000,1),'ms').appendField('ms 기다리기');break;
-   case 'print':row.appendField('시리얼에').appendField(dropdown('source',[['읽은 값 value','value'],['텍스트','text']]),'source').appendField(new B.FieldTextInput('Hello, CubeLink!'),'text').appendField('출력 (새 줄)');break;
-   case 'ultrasonic':row.appendField('초음파 Trig');pin('trig');row.appendField('Echo');pin('echo');row.appendField('거리(cm) → value');break;
-   default:row.appendField(d.label+' 핀');pin('pin',['analog','ldr','pot'].includes(type));row.appendField('→ value');
+   case 'print':row.appendField('시리얼에').appendField(dropdown('source',[['최근 센서 값','value'],['텍스트','text']]),'source').appendField(new B.FieldTextInput('Hello, CubeLink!'),'text').appendField('출력 (새 줄)');break;
+   case 'ultrasonic':row.appendField('초음파 Trig');pin('trig');row.appendField('Echo');pin('echo');row.appendField('거리(cm) → distanceCm');break;
+   default:{const outputName={read:'digitalValue',button:'buttonState',analog:'analogValue',ldr:'lightValue',pot:'potentiometerValue'}[type]||'value';row.appendField(d.label+' 핀');pin('pin',['analog','ldr','pot'].includes(type));row.appendField('→ '+outputName);}
    }
    this.setPreviousStatement(true);this.setNextStatement(true);this.setInputsInline(true);
    this.setColour(type==='mode'||type==='write'||type==='led'||type==='threshold'?'#E74C3C':type==='print'?'#27AE60':type==='delay'?'#D4AF37':'#16A085');

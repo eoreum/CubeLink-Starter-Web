@@ -18,7 +18,7 @@
     "productName": "CubeLink Starter",
     "copyright": "Copyright © Eoreum. Third-party licenses included.",
     "directories": {
-      "output": "C:/Users/robos/Documents/Codex/work/starter-build",
+      "output": "dist",
       "buildResources": "build"
     },
     "files": [

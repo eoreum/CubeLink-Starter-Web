@@ -14,8 +14,11 @@ $checksums=$release.assets | Where-Object {$_.name -match 'checksums.txt$'} | Se
 if(-not $asset -or -not $checksums){throw 'Arduino download assets missing'}
 $zipPath=Join-Path $desktopRoot 'arduino-cli.zip'
 Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
-$hashText=(Invoke-WebRequest -Uri $checksums.browser_download_url).Content
-$expected=(($hashText -split "`n" | Where-Object {$_ -match ([regex]::Escape($asset.name)+'$')}) -split '\s+')[0]
+$checksumPath=Join-Path $desktopRoot 'arduino-checksums.txt'
+Invoke-WebRequest -Uri $checksums.browser_download_url -OutFile $checksumPath
+$checksumLine=Get-Content -LiteralPath $checksumPath | Where-Object {$_.Trim() -match ([regex]::Escape($asset.name)+'$')} | Select-Object -First 1
+if(-not $checksumLine){throw 'Arduino checksum entry missing'}
+$expected=($checksumLine.Trim() -split '\s+')[0]
 if((Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash -ne $expected){throw 'Arduino checksum mismatch'}
 Expand-Archive -LiteralPath $zipPath -DestinationPath $payloadRoot -Force
 Copy-Item -LiteralPath (Join-Path $payloadRoot 'LICENSE.txt') -Destination (Join-Path $desktopRoot 'LICENSES/Arduino-CLI-GPL3.txt') -Force

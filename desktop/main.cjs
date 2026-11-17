@@ -10,7 +10,7 @@ let window,bridge,splash,localAI,quitting=false;
 if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',()=>{if(window){if(window.isMinimized())window.restore();window.focus()}});
- app.whenReady().then(start).catch(error=>{dialog.showErrorBox('CubeLink Starter 시작 실패',String(error.stack||error));app.quit()});
+ app.whenReady().then(start).catch(async error=>{if(process.env.CUBELINK_SMOKE_FILE){await fs.writeFile(process.env.CUBELINK_SMOKE_FILE,JSON.stringify({error:String(error.stack||error)}));}else dialog.showErrorBox('CubeLink Starter 시작 실패',String(error.stack||error));app.quit()});
 }
 app.on('window-all-closed',()=>app.quit());
 app.on('before-quit',()=>{quitting=true;bridge?.close();localAI?.stop();});

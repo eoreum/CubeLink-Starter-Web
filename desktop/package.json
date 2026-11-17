@@ -1,0 +1,75 @@
+{
+  "name": "cubelink-starter-desktop",
+  "version": "1.8.0",
+  "description": "CubeLink Starter Windows classroom app with integrated Arduino tools",
+  "author": "Eoreum",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.eoreum.cubelinkstarter",
+    "productName": "CubeLink Starter",
+    "copyright": "Copyright © Eoreum. Third-party licenses included.",
+    "directories": {
+      "output": "C:/Users/robos/Documents/Codex/work/starter-build",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "security.cjs",
+      "ui/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bridge",
+        "to": "bridge",
+        "filter": [
+          "server.mjs",
+          "probe-firmware.ps1",
+          "firmware/**/*",
+          "README.md"
+        ]
+      },
+      {
+        "from": "payload",
+        "to": "arduino"
+      },
+      {
+        "from": "LICENSES",
+        "to": "THIRD-PARTY-LICENSES"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "CubeLinkStarterSetup-${version}-x64.${ext}",
+      "signExecutable": false,
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "compression": "normal"
+  }
+}

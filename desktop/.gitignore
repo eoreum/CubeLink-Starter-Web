@@ -1,0 +1,9 @@
+node_modules/
+ui/
+bridge/
+payload/
+downloads-cache/
+electron-dist/
+build/icon.ico
+arduino-cli.zip
+LICENSES/

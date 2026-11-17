@@ -1,0 +1,69 @@
+name: Build Windows Desktop
+on:
+  push:
+    branches: ['desktop/windows-installer-1.8']
+    paths: ['desktop/**', '.github/workflows/windows-desktop.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_BUILDER_CACHE: D:\cubelink-builder-cache
+      ELECTRON_CACHE: D:\cubelink-electron-cache
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare offline Arduino tools and classroom UI
+        shell: pwsh
+        run: |
+          ./desktop/prepare-payload.ps1
+          ./desktop/build-icon.ps1
+          $env:ARDUINO_DIRECTORIES_DATA="$PWD/desktop/payload/data"
+          $env:ARDUINO_DIRECTORIES_USER="$PWD/desktop/payload/user"
+          & ./desktop/payload/arduino-cli.exe compile --fqbn arduino:avr:uno ./desktop/bridge/firmware/CubeLinkStarterLive
+          if($LASTEXITCODE){throw 'Firmware compilation failed'}
+          $inventory=Join-Path $PWD 'desktop/payload/data/inventory.yaml'
+          if(Test-Path -LiteralPath $inventory){Remove-Item -LiteralPath $inventory -Force}
+      - name: Check desktop integration and regression tests
+        shell: pwsh
+        run: |
+          node --test desktop/tests.test.cjs
+          if($LASTEXITCODE){throw 'Desktop tests failed'}
+          $env:CUBELINK_BRIDGE_E2E='1'
+          node --test tests/*.test.mjs
+          if($LASTEXITCODE){throw 'Classroom tests failed'}
+      - name: Build offline Windows installer
+        shell: pwsh
+        run: |
+          npm ci --prefix desktop --ignore-scripts --no-audit --no-fund
+          if($LASTEXITCODE){throw 'npm install failed'}
+          node desktop/node_modules/electron-builder/cli.js --projectDir desktop --win nsis --x64 --publish never --config.directories.output=D:/cubelink-build
+          if($LASTEXITCODE){throw 'Installer build failed'}
+          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.8.0-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
+      - name: Packaged application smoke test
+        shell: pwsh
+        run: |
+          $env:CUBELINK_TEST_PROFILE='D:/cubelink-smoke-profile'
+          $env:CUBELINK_SMOKE_FILE='D:/cubelink-build/smoke.json'
+          $process=Start-Process 'D:/cubelink-build/win-unpacked/CubeLink Starter.exe' -WindowStyle Hidden -PassThru
+          if(-not $process.WaitForExit(120000)){Stop-Process -Id $process.Id; throw 'Packaged app smoke test timed out'}
+          if(-not (Test-Path -LiteralPath $env:CUBELINK_SMOKE_FILE)){throw "Packaged app did not initialize: $($process.ExitCode)"}
+          $result=Get-Content $env:CUBELINK_SMOKE_FILE -Raw | ConvertFrom-Json
+          if(-not $result.state.desktop -or $result.state.missions -ne 18 -or -not $result.health.cliAvailable){throw 'Packaged app health failed'}
+          Get-Content $env:CUBELINK_SMOKE_FILE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CubeLink-Starter-Windows-1.8.0
+          path: |
+            D:/cubelink-build/CubeLinkStarterSetup-1.8.0-x64.exe
+            D:/cubelink-build/SHA256.txt
+            D:/cubelink-build/smoke.json
+          compression-level: 0
+          retention-days: 30

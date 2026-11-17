@@ -6,7 +6,7 @@ import {lessons,missionOrder} from './lessons.js?v=1.5.0-studio1';
 import {renderWiring} from './wiring.js?v=1.5.0-studio1';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-studio1';
-import {initAiMaker} from './ai-maker-ui.js?v=1.5.0-studio1';
+import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
 import {initHardwareUpload} from './hardware-ui.js?v=1.7.0-live1';
 const $=id=>document.getElementById(id);
 let activeMission='ledOn',diagramSignature='',completed=new Set();

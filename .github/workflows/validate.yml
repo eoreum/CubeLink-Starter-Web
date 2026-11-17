@@ -1,0 +1,31 @@
+name: Validate Starter
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/*.test.mjs
+        env:
+          CUBELINK_BRIDGE_E2E: '1'
+  firmware:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fqbn: ['arduino:avr:uno', 'arduino:avr:nano:cpu=atmega328', 'arduino:avr:nano:cpu=atmega328old', 'arduino:avr:mega:cpu=atmega2560']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install "DHT sensor library" "Adafruit Unified Sensor"
+      - run: arduino-cli compile --fqbn '${{ matrix.fqbn }}' bridge/firmware/CubeLinkStarterLive

@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^COM[1-9][0-9]{0,2}$')]
   [string]$Port

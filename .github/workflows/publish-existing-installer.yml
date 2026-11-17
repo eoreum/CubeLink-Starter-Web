@@ -17,4 +17,4 @@ jobs:
         run: |
           gh run download 44049403362 --name CubeLink-Starter-Windows-1.8.0 --dir assets
           echo 'fe328c9b2e0b867f1b770197f0228c52714ad2416ea0af6727d7cc2e87c551dd  assets/CubeLinkStarterSetup-1.8.0-x64.exe' | sha256sum --check
-          gh release create desktop-v1.8.0 assets/CubeLinkStarterSetup-1.8.0-x64.exe assets/SHA256.txt --target 0d6c209191eacc3bffb4915ec854d612672a6b30 --title 'CubeLink Starter Windows 1.8.0' --notes 'Windows x64 test installer. Integrated Arduino tools; no separate Bridge setup. 18 lessons and native-tool startup verified. Local AI edition is being prepared separately. Unsigned test release; physical board QA remains.' --prerelease
+          gh release create desktop-v1.8.0 assets/CubeLinkStarterSetup-1.8.0-x64.exe assets/SHA256.txt --target "$GITHUB_SHA" --title 'CubeLink Starter Windows 1.8.0' --notes 'Windows x64 test installer. Integrated Arduino tools; no separate Bridge setup. 18 lessons and native-tool startup verified. Local AI edition is being prepared separately. Unsigned test release; physical board QA remains.' --prerelease

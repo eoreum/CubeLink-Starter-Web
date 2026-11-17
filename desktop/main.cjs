@@ -44,6 +44,7 @@ async function start(){
  const base='http://127.0.0.1:'+bridge.address().port;
  ipcMain.handle('arduino:request',async(event,route,body)=>{
   if(!trusted(event.senderFrame?.url)||event.sender!==window?.webContents||!Object.hasOwn(ROUTES,route))throw Error('허용되지 않은 연결 요청');
+  if(route==='/session')return {token:'desktop-ipc'};
   const method=ROUTES[route];if(body!==undefined&&JSON.stringify(body).length>220000)throw Error('요청이 너무 큽니다.');
   const response=await fetch(base+route,{method,headers:{Origin:'http://127.0.0.1','Content-Type':'application/json','X-CubeLink-Token':token},...(method==='POST'?{body:JSON.stringify(body)}:{})});
   const result=await response.json();if(!response.ok)throw Error(result.error||'연결 도구 오류');return result;

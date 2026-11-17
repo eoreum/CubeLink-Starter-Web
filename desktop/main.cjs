@@ -6,14 +6,14 @@ const {randomBytes}=require('node:crypto');
 const {APP_ORIGIN,trusted,resourcePath,ROUTES}=require('./security.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'cubelink',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 if(process.env.CUBELINK_TEST_PROFILE)app.setPath('userData',path.resolve(process.env.CUBELINK_TEST_PROFILE));
-let window,bridge,splash,quitting=false;
+let window,bridge,splash,localAI,quitting=false;
 if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',()=>{if(window){if(window.isMinimized())window.restore();window.focus()}});
  app.whenReady().then(start).catch(error=>{dialog.showErrorBox('CubeLink Starter 시작 실패',String(error.stack||error));app.quit()});
 }
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{quitting=true;bridge?.close();});
+app.on('before-quit',()=>{quitting=true;bridge?.close();localAI?.stop();});
 async function prepareTools(resources){
  const target=path.join(app.getPath('userData'),'arduino-tools-1.8.0');
  const marker=path.join(target,'.ready');
@@ -33,6 +33,9 @@ async function start(){
  splash=new BrowserWindow({width:460,height:200,resizable:false,webPreferences:{sandbox:true,nodeIntegration:false,contextIsolation:true}});
  await splash.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent('<html lang="ko"><body style="font:16px Segoe UI,Malgun Gothic;padding:30px;background:#eef7f7;color:#164e56"><h2>CubeLink Starter</h2>아두이노 도구를 준비하고 있습니다.<p>처음 실행할 때는 잠시 기다려 주세요.</p></body></html>'));
  const resources=app.isPackaged?process.resourcesPath:__dirname;
+ const {LocalAI}=require('./local-ai.cjs');
+ localAI=new LocalAI({storageDir:path.join(app.getPath('userData'),'local-ai'),runtimeDir:path.join(resources,'local-runtime')});
+ for(const action of ['status','prepare','chat','cancel'])ipcMain.handle('local-ai:'+action,(event,arg)=>{if(!trusted(event.senderFrame?.url)||event.sender!==window?.webContents||event.senderFrame!==window.webContents.mainFrame)throw Error('허용되지 않은 AI 요청');return localAI[action](arg)});
  await prepareTools(resources);
  const token=randomBytes(32).toString('hex');
  const {createBridgeServer}=await import(pathToFileURL(path.join(resources,'bridge','server.mjs')).href);
@@ -70,6 +73,8 @@ async function start(){
  if(process.env.CUBELINK_SMOKE_FILE){
   const state=await window.webContents.executeJavaScript(`new Promise(resolve=>{const start=Date.now();const check=()=>{if(document.getElementById('missionProgress')?.textContent.includes('/18')||Date.now()-start>45000)resolve({title:document.title,missions:document.getElementById('example').options.length,version:document.querySelector('footer').textContent,desktop:Boolean(window.cubelinkDesktop),serial:!!navigator.serial});else setTimeout(check,100)};check()})`);
   const health=await fetch(base+'/health',{headers:{Origin:'http://127.0.0.1','X-CubeLink-Token':token}}).then(r=>r.json());
-  await fs.writeFile(process.env.CUBELINK_SMOKE_FILE,JSON.stringify({state,health},null,2));app.quit();
+  let ai;
+  if(process.env.CUBELINK_AI_SMOKE==='1'){await localAI.prepare();const result=await localAI.chat([{role:'user',content:'한국어로 LED가 무엇인지 한 문장으로 설명해 줘.'}]);ai={...(await localAI.status()),text:result.text};}
+  await fs.writeFile(process.env.CUBELINK_SMOKE_FILE,JSON.stringify({state,health,ai},null,2));app.quit();
  }
 }

@@ -5,7 +5,7 @@ on:
     paths: ['desktop/**', '.github/workflows/windows-desktop.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: desktop-${{ github.ref }}
   cancel-in-progress: true
@@ -27,6 +27,7 @@ jobs:
         run: |
           ./desktop/prepare-payload.ps1
           ./desktop/build-icon.ps1
+          ./desktop/prepare-local-ai.ps1
           $env:ARDUINO_DIRECTORIES_DATA="$PWD/desktop/payload/data"
           $env:ARDUINO_DIRECTORIES_USER="$PWD/desktop/payload/user"
           & ./desktop/payload/arduino-cli.exe compile --fqbn arduino:avr:uno ./desktop/bridge/firmware/CubeLinkStarterLive
@@ -36,7 +37,7 @@ jobs:
       - name: Check desktop integration and regression tests
         shell: pwsh
         run: |
-          node --test desktop/tests.test.cjs
+          node --test desktop/tests.test.cjs desktop/local-ai.test.cjs
           if($LASTEXITCODE){throw 'Desktop tests failed'}
           $env:CUBELINK_BRIDGE_E2E='1'
           node --test tests/*.test.mjs
@@ -48,25 +49,35 @@ jobs:
           if($LASTEXITCODE){throw 'npm install failed'}
           node desktop/node_modules/electron-builder/cli.js --projectDir desktop --win nsis --x64 --publish never --config.directories.output=D:/cubelink-build
           if($LASTEXITCODE){throw 'Installer build failed'}
-          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.8.0-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
+          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.9.0-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
       - name: Packaged application smoke test
         shell: pwsh
         run: |
           $env:CUBELINK_TEST_PROFILE='D:/cubelink-smoke-profile'
           $env:CUBELINK_SMOKE_FILE='D:/cubelink-build/smoke.json'
+          $env:CUBELINK_AI_SMOKE='1'
           $process=Start-Process 'D:/cubelink-build/win-unpacked/CubeLink Starter.exe' -WindowStyle Hidden -PassThru
-          if(-not $process.WaitForExit(120000)){Stop-Process -Id $process.Id; throw 'Packaged app smoke test timed out'}
+          if(-not $process.WaitForExit(300000)){Stop-Process -Id $process.Id; throw 'Packaged app smoke test timed out'}
           if(-not (Test-Path -LiteralPath $env:CUBELINK_SMOKE_FILE)){throw "Packaged app did not initialize: $($process.ExitCode)"}
           $result=Get-Content $env:CUBELINK_SMOKE_FILE -Raw | ConvertFrom-Json
           if(-not $result.state.desktop -or $result.state.missions -ne 18 -or -not $result.health.cliAvailable){throw 'Packaged app health failed'}
+          if(-not $result.ai.ready -or -not $result.ai.text){throw 'Local AI inference failed'}
           Get-Content $env:CUBELINK_SMOKE_FILE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CubeLink-Starter-Windows-1.8.0
+          name: CubeLink-Starter-Windows-1.9.0
           path: |
-            D:/cubelink-build/CubeLinkStarterSetup-1.8.0-x64.exe
+            D:/cubelink-build/CubeLinkStarterSetup-1.9.0-x64.exe
             D:/cubelink-build/SHA256.txt
             D:/cubelink-build/smoke.json
           compression-level: 0
           retention-days: 30
+
+      - name: Publish tested desktop installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create desktop-v1.9.0 D:/cubelink-build/CubeLinkStarterSetup-1.9.0-x64.exe D:/cubelink-build/SHA256.txt --target $env:GITHUB_SHA --title "CubeLink Starter Windows 1.9.0 - Free Local AI" --notes-file desktop/RELEASE-NOTES.md --prerelease
+          if($LASTEXITCODE){throw 'Release publication failed'}

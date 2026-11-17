@@ -1,6 +1,6 @@
 {
   "name": "cubelink-starter-desktop",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "CubeLink Starter Windows classroom app with integrated Arduino tools",
   "author": "Eoreum",
   "main": "main.cjs",
@@ -26,7 +26,8 @@
       "preload.cjs",
       "security.cjs",
       "ui/**/*",
-      "package.json"
+      "package.json",
+      "local-ai.cjs"
     ],
     "extraResources": [
       {
@@ -46,6 +47,10 @@
       {
         "from": "LICENSES",
         "to": "THIRD-PARTY-LICENSES"
+      },
+      {
+        "from": "local-runtime",
+        "to": "local-runtime"
       }
     ],
     "win": {

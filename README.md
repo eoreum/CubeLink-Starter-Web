@@ -1,4 +1,4 @@
-# CubeLink Starter Web 1.7.0 live-firmware candidate
+# CubeLink Starter Web 1.8.0
 
 Public classroom web app with real Blockly interlocking blocks.
 
@@ -13,3 +13,5 @@ Source and preserved history are managed separately in eoreum/CubeLink-Starter. 
 The v1.7.0 candidate separates Upload and Live modes for Uno R3, Nano Classic, and Mega 2560. Before Live mode starts, the bridge checks the selected board for the current CubeLink Starter Live firmware. A matching version is reused without writing flash; missing or mismatched firmware is compiled, uploaded, and verified automatically. Browser Web Serial remains responsible for the 9600 baud monitor. Native compilation and upload are performed by the localhost-only companion in `bridge/`, which invokes the official Arduino CLI with fixed allowlisted board profiles and no command shell. See `bridge/README.md` for setup. This general Arduino teaching bridge is separate from authenticated CubeLink production-hardware access.
 
 Run the dependency-free regression checks with `node --test tests/*.test.mjs`.
+
+Version 1.8 completes browser-driven Live block execution and persistent Windows Bridge installation with automatic startup at login. Existing lessons, Blockly editing, AI maker, code generation, and project storage remain available. The downloadable ZIP is rebuilt from `bridge/`; see its README for first-use device permissions, installation and removal of automatic startup. GitHub Actions checks regression tests and compiles Live firmware for Uno, both Nano bootloaders, and Mega. Physical upload and sensor behavior still require testing with connected boards.

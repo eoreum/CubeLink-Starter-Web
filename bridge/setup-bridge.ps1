@@ -1,5 +1,18 @@
+﻿param([switch]$Installed)
 $ErrorActionPreference = 'Stop'
 $bridgeRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $Installed) {
+  $installRoot = Join-Path $env:LOCALAPPDATA 'CubeLinkStarter\Bridge'
+  New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+  # Copy source files only. Keep previously installed runtimes and logs on upgrade.
+  if ([IO.Path]::GetFullPath($bridgeRoot) -ne [IO.Path]::GetFullPath($installRoot)) {
+    foreach ($item in Get-ChildItem -LiteralPath $bridgeRoot) {
+      if ($item.Name -notin @('tools','runtime','logs')) { Copy-Item -LiteralPath $item.FullName -Destination $installRoot -Recurse -Force }
+    }
+  }
+  & (Join-Path $installRoot 'setup-bridge.ps1') -Installed
+  exit
+}
 $toolsRoot = Join-Path $bridgeRoot 'tools'
 $runtimeRoot = Join-Path $bridgeRoot 'runtime\node'
 $downloadRoot = Join-Path ([IO.Path]::GetTempPath()) ('cubelink-starter-bridge-' + [guid]::NewGuid().ToString('N'))
@@ -58,7 +71,23 @@ try {
   & $cli lib install 'Adafruit Unified Sensor'
   if ($LASTEXITCODE -ne 0) { throw 'Adafruit Unified Sensor 설치에 실패했습니다.' }
   Write-Host ''
-  Write-Host '설치 완료. 이제 start-bridge.cmd를 실행하세요.' -ForegroundColor Green
+  # Stop only an older bridge launched from this installation before restarting.
+  $serverPath = Join-Path $bridgeRoot 'server.mjs'
+  Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | Where-Object {
+    $_.CommandLine -and $_.CommandLine.Contains($serverPath)
+  } | ForEach-Object { Stop-Process -Id $_.ProcessId -ErrorAction SilentlyContinue }
+  $shortcutPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'CubeLink Starter Bridge.lnk'
+  $shell = New-Object -ComObject WScript.Shell
+  $shortcut = $shell.CreateShortcut($shortcutPath)
+  $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+  $shortcut.Arguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + (Join-Path $bridgeRoot 'start-bridge.ps1') + '"'
+  $shortcut.WorkingDirectory = $bridgeRoot
+  $shortcut.WindowStyle = 7
+  $shortcut.Save()
+  & (Join-Path $bridgeRoot 'start-bridge.ps1')
+  Write-Host '설치 완료. 브리지가 실행 중이며 Windows 로그인 때 자동 실행됩니다.' -ForegroundColor Green
+  Write-Host ('설치 위치: ' + $bridgeRoot)
+  Write-Host '자동 실행 해제: 설치 폴더의 disable-autostart.cmd'
 } finally {
   if (Test-Path -LiteralPath $downloadRoot) { Remove-Item -LiteralPath $downloadRoot -Recurse -Force }
 }

@@ -6,4 +6,4 @@ if((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne 'D0F60F9722137577
 Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $root 'local-runtime') -Force
 if(-not (Test-Path -LiteralPath (Join-Path $root 'local-runtime/llama-server.exe'))){throw 'Local AI runtime missing'}
 Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ggml-org/llama.cpp/b12465/LICENSE' -OutFile (Join-Path $root 'LICENSES/llama.cpp-MIT.txt')
-Invoke-WebRequest -Uri 'https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/23749fefcc72300e3a2ad315e1317431b06b590a/LICENSE' -OutFile (Join-Path $root 'LICENSES/Qwen-Apache2.txt')
+Invoke-WebRequest -Uri 'https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/f86cb2c1fa58255f8052cc32aeede1b7482d4361/LICENSE' -OutFile (Join-Path $root 'LICENSES/Qwen-Apache2.txt')

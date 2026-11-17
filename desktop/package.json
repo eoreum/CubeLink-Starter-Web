@@ -1,6 +1,6 @@
 {
   "name": "cubelink-starter-desktop",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "CubeLink Starter Windows classroom app with integrated Arduino tools",
   "author": "Eoreum",
   "main": "main.cjs",

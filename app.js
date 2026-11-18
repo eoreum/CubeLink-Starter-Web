@@ -48,7 +48,25 @@ $('run').onclick=()=>{if(errors(project).length||project.setup.length+project.lo
 function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type})),a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('download').onclick=()=>{if(errors(project).length)return;download('CubeLinkStarter.ino',generate(project),'text/plain;charset=utf-8')};$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(generate(project));toast('Arduino 코드를 복사했습니다')}catch{toast('복사 권한이 없습니다. .ino 저장을 사용하세요.')}};$('save').onclick=()=>download('CubeLinkStarter.json',serializeProject(project),'application/json');$('open').onclick=()=>$('file').click();$('file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>200000)throw Error('파일이 너무 큽니다');const p=parseProject(await file.text());autosave();stop();project=p;activeMission=p.mission||activeMission;project.mission=activeMission;loadEditor();render();showLesson();autosave();toast('프로젝트를 불러왔습니다')}catch(err){toast('불러오기 실패: '+err.message)}e.target.value=''};
 $('help').onclick=()=>{showLesson();$('helpDialog').showModal()};$('example').onchange=()=>switchMission($('example').value);
-function showLesson(){const lesson=lessons[activeMission]||{time:'자유 프로젝트',title:'AI 새 프로젝트',goal:'새로 생성된 블록과 코드를 검토하고 시뮬레이션으로 확인하세요.',wiring:['부품과 핀 연결을 확인하세요.'],checks:['블록과 코드의 동작을 확인하세요.'],steps:['setup과 loop를 살펴보세요.'],note:'기존 미션과 별개의 프로젝트입니다.'},host=$('lessonContent');host.replaceChildren();host.append(el('div','lesson-kicker',lesson.time+' · 실습 안내'),el('h2','',lesson.title),el('p','',lesson.goal));for(const [heading,items]of [['준비 · 배선',lesson.wiring],['성공 확인',lesson.checks]]){host.append(el('h3','',heading));const list=el('ol');for(const item of items)list.append(el('li','',item));host.append(list)}const hints=el('details');hints.append(el('summary','','힌트 보기'));const hintList=el('ol');lesson.steps.forEach(item=>hintList.append(el('li','',item)));hints.append(hintList);host.append(hints,el('p','lesson-note',lesson.note));$('missionTask').textContent='미션 목표 · '+lesson.goal;$('lessonSummary').textContent=lesson.title+' · '+lesson.time;showProgress();}
+let hintStep=0;
+function renderVisualHint(){
+ const host=$('visualHint');if(!host)return;
+ const lesson=lessons[activeMission];
+ const steps=lesson?.steps||['setup에 필요한 핀 모드 블록을 넣으세요.','loop에 입력·출력 블록을 연결하세요.','시뮬레이션을 실행하고 Arduino 코드를 확인하세요.'];
+ hintStep=Math.max(0,Math.min(hintStep,steps.length-1));
+ host.replaceChildren();
+ const heading=el('strong','', '그림 힌트 · '+(hintStep+1)+' / '+steps.length);
+ const card=el('div','visual-hint-card');
+ const label=el('div','visual-hint-label',hintStep===0?'① 시작 블록 확인':hintStep===steps.length-1?'✓ 마무리 확인':'→ 다음 블록 연결');
+ const sample=el('div','visual-hint-block',steps[hintStep]);
+ card.append(label,sample);
+ const controls=el('div','visual-hint-controls');
+ const prev=el('button','','◀ 이전'),next=el('button','',hintStep===steps.length-1?'처음부터 ↺':'다음 ▶');
+ prev.type=next.type='button';prev.disabled=hintStep===0;
+ prev.onclick=()=>{hintStep--;renderVisualHint()};next.onclick=()=>{hintStep=(hintStep+1)%steps.length;renderVisualHint()};
+ controls.append(prev,next);host.append(heading,card,controls);
+}
+function showLesson(){hintStep=0;const lesson=lessons[activeMission]||{time:'자유 프로젝트',title:'AI 새 프로젝트',goal:'새로 생성된 블록과 코드를 검토하고 시뮬레이션으로 확인하세요.',wiring:['부품과 핀 연결을 확인하세요.'],checks:['블록과 코드의 동작을 확인하세요.'],steps:['setup과 loop를 살펴보세요.'],note:'기존 미션과 별개의 프로젝트입니다.'},host=$('lessonContent');host.replaceChildren();host.append(el('div','lesson-kicker',lesson.time+' · 실습 안내'),el('h2','',lesson.title),el('p','',lesson.goal));for(const [heading,items]of [['준비 · 배선',lesson.wiring],['성공 확인',lesson.checks]]){host.append(el('h3','',heading));const list=el('ol');for(const item of items)list.append(el('li','',item));host.append(list)}const visual=el('section','visual-hint-panel');visual.id='visualHint';host.append(visual);const hints=el('details');hints.append(el('summary','','힌트 보기'));const hintList=el('ol');lesson.steps.forEach(item=>hintList.append(el('li','',item)));hints.append(hintList);host.append(hints,el('p','lesson-note',lesson.note));$('missionTask').textContent='미션 목표 · '+lesson.goal;$('lessonSummary').textContent=lesson.title+' · '+lesson.time;showProgress();}
 $('closeHelp').onclick=()=>$('helpDialog').close();$('monitorSource').onchange=showLogs;$('clear').onclick=()=>{logs[$('monitorSource').value]=[];showLogs()};
 const liveChannel=new LiveChannel(text=>{if(!writer)throw Error('USB 연결 필요');return writer.write(new TextEncoder().encode(text))});
 const liveRunner=new LiveRunner({request:command=>liveChannel.request(command),log:line=>appendLog('hardware',line),onState:active=>{$('liveStart').disabled=active;$('liveStop').disabled=!active;$('send').disabled=active||!port;$('connection').textContent=active?'● 실제 보드 실행 중':'라이브 정지 · 보드 상태 확인';}});

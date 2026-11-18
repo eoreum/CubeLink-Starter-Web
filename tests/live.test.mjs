@@ -39,3 +39,18 @@ test('stop interrupts long delays and waits for final reset before allowing reus
 test('live reserves serial pins including nested sensor expressions on every board',()=>{
  for(const board of ['uno','nano','mega'])assert.ok(liveIssues({board,setup:[],loop:[{type:'printValue',value:{type:'digitalRead',pin:'1'}}]}).some(s=>s.includes('D0/D1')));
 });
+
+
+test('live channel ignores stale or mismatched reply types',async()=>{
+ const sent=[],channel=new LiveChannel(text=>sent.push(text));
+ const hello=channel.request('CL:HELLO');await Promise.resolve();
+ assert.equal(channel.accept('CL:OK'),false);
+ channel.accept(`CL:LIVE:${LIVE_VERSION}`);await hello;
+ const write=channel.request('DW,13,1');await Promise.resolve();
+ assert.equal(channel.accept('CL:VAL:13:1'),false);
+ assert.equal(channel.accept(`CL:LIVE:${LIVE_VERSION}`),false);
+ channel.accept('CL:OK');assert.equal(await write,'CL:OK');
+ const read=channel.request('DR,2');await Promise.resolve();
+ assert.equal(channel.accept('CL:OK'),false);
+ channel.accept('CL:VAL:2:1');assert.equal(await read,'CL:VAL:2:1');
+});

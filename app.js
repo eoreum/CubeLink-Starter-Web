@@ -1,3 +1,4 @@
+import {physicalWiringSvg} from './physical-wiring.js?v=1.8.1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=1.8.0';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.5.0-studio1';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-studio1';
@@ -32,10 +33,11 @@ digital.forEach(pin=>{const row=el('div','input-row'),label=el('label','',pin+' 
 if(all.some(b=>['temperature','dhtTemperature'].includes(b.type)))slider('온도 (°C)',inputs.temperature,-20,80,v=>inputs.temperature=v);
 if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100,v=>inputs.humidity=v);
 if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
+let physicalView=false;
 function updateCircuit(){
  const diagramProject=$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
- const signature=JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
- if(signature!==diagramSignature){renderWiring($('circuit'),diagramProject,lessons[activeMission].title+($('wiringMode').value==='mine'?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
+ const signature=JSON.stringify(diagramProject)+'|'+$('wiringMode').value+'|'+physicalView;
+ if(signature!==diagramSignature){const physical=physicalView?physicalWiringSvg(diagramProject):null;if(physical){$('circuit').setAttribute('viewBox','0 0 1100 '+physical.height);$('circuit').innerHTML=physical.body;}else renderWiring($('circuit'),diagramProject,(lessons[activeMission]?.title||'새 프로젝트')+($('wiringMode').value==='mine'?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
  for(const node of $('circuit').querySelectorAll('[data-led-pin]'))node.setAttribute('fill',sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0');
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
  $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW'))].filter(Boolean).join(' · ');
@@ -78,6 +80,7 @@ async function receive(activePort){const decoder=new TextDecoder();let pending='
 async function openSerial(selected,message='── 실제 USB 연결 · 9600 baud ──'){connecting=true;connectionUI();try{await selected.open({baudRate:9600});port=selected;liveChannel.failed=false;writer=port.writable.getWriter();$('monitorSource').value='hardware';appendLog('hardware',message);showLogs();receive(port);return true}catch(error){port=null;throw error}finally{connecting=false;connectionUI()}}
 $('serialConnect').onclick=async()=>{if(port){await disconnect();return}if(!('serial'in navigator)||!window.isSecureContext){toast('Web Serial은 데스크톱 Chrome의 HTTPS 또는 localhost가 필요합니다');return}try{await openSerial(await navigator.serial.requestPort())}catch(err){toast(err.name==='NotFoundError'?'포트 선택을 취소했습니다':'연결 실패: '+err.message)}};
 $('sendForm').onsubmit=async e=>{e.preventDefault();if(liveRunner.task)return;if(!writer){toast('실제 USB를 먼저 연결하세요');return}const text=$('serialText').value;try{await writer.write(new TextEncoder().encode(text+'\n'));appendLog('hardware','> '+text);$('serialText').value=''}catch(err){toast('전송 실패: '+err.message)}};
+const physicalToggle=el('button','','실물 배선도 보기');physicalToggle.type='button';physicalToggle.onclick=()=>{physicalView=!physicalView;physicalToggle.textContent=physicalView?'기존 연결도 보기':'실물 배선도 보기';diagramSignature='';updateCircuit()};$('expandCircuit').insertAdjacentElement('beforebegin',physicalToggle);
 prepareMissions();initCircuitView();restore();initEditor();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission||'custom';project=next;inputs=freshInputs();logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 설계 적용 · '+(lessons[mission]?.title||'새 프로젝트')+' ──')},toast});initHardwareUpload({getBoard:()=>project.board,stopLive:()=>liveRunner.stop(),getCode:()=>generate(project),getErrors:()=>errors(project),isSerialConnected:()=>Boolean(port),releaseSerial:disconnect,resumeSerial:async selected=>{await new Promise(resolve=>setTimeout(resolve,900));return openSerial(selected,'── 업로드 후 실제 USB 다시 연결 · 9600 baud ──')},selectHardwareMonitor:()=>{$('monitorSource').value='hardware';showLogs()},appendHardwareLog:line=>appendLog('hardware',line),toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
 
 function prepareMissions(){

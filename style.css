@@ -43,13 +43,13 @@ body{grid-template-rows:48px 58px 44px 27px minmax(0,1fr) 34px 19px}.desktop-dow
 
 /* Classroom layout v3: full-height Blockly at left, always-visible interactive circuit at right. */
 @media(min-width:901px){
- main#appPanels{grid-template-columns:minmax(0,1fr) var(--code-w,36%);grid-template-rows:minmax(0,1fr) var(--bottom-size,28%)}
- #appPanels .workspace{grid-column:1;grid-row:1 / 3}
+ main#appPanels{grid-template-columns:minmax(0,1fr) var(--code-w,36%);grid-template-rows:minmax(0,1fr) var(--bottom-size,25%)}
+ #appPanels .workspace{grid-column:1;grid-row:1}
  #appPanels .simulation{grid-column:2;grid-row:1}
  #appPanels .monitor{grid-column:2;grid-row:2}
- #appPanels .code{display:none}
+ #appPanels .code{display:flex;grid-column:1;grid-row:2}
  #appPanels .splitter.vertical{top:0;bottom:0}
- #appPanels .splitter.horizontal{left:calc(100% - var(--code-w));right:0}
+ #appPanels .splitter.horizontal{left:0;right:0}
  #appPanels .sim-layout{display:flex;flex-direction:column;gap:5px;overflow:auto}
  #appPanels .sim-layout>div:first-child{flex:0 0 auto;min-height:0}
  #appPanels .sim-layout svg{flex:none;min-height:175px;max-height:38vh;height:auto;aspect-ratio:1100 / 300;object-fit:contain}

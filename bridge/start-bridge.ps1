@@ -11,7 +11,7 @@ if (-not (Test-Path -LiteralPath $node)) {
 }
 try {
   $health = Invoke-RestMethod -Uri 'http://127.0.0.1:32145/health' -Headers @{ Origin='https://eoreum.github.io' } -TimeoutSec 3
-  if ($health.ok) { exit 0 }
+  if ($health.ok -and $health.bridgeVersion -eq '1.2.0') { exit 0 }
 } catch { }
 $logs = Join-Path $bridgeRoot 'logs'
 New-Item -ItemType Directory -Path $logs -Force | Out-Null
@@ -23,4 +23,4 @@ for ($attempt=0; $attempt -lt 20; $attempt++) {
     if ($health.ok) { exit 0 }
   } catch { }
 }
-throw '브리지를 시작하지 못했습니다. logs 폴더를 확인하세요.'
+throw '최신 브리지를 확인하지 못했습니다. 이전 브리지가 포트 32145를 사용 중인지 확인하고 logs 폴더를 확인하세요.'

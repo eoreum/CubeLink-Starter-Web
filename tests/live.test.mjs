@@ -51,6 +51,7 @@ test('live channel ignores stale or mismatched reply types',async()=>{
  assert.equal(channel.accept(`CL:LIVE:${LIVE_VERSION}`),false);
  channel.accept('CL:OK');assert.equal(await write,'CL:OK');
  const read=channel.request('DR,2');await Promise.resolve();
+ assert.equal(channel.accept('CL:VAL:3:1'),false);
  assert.equal(channel.accept('CL:OK'),false);
  channel.accept('CL:VAL:2:1');assert.equal(await read,'CL:VAL:2:1');
 });

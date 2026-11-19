@@ -20,3 +20,5 @@ edit('style.css',s=>s+'\n/* Keep all classroom actions reachable at smaller desk
 edit('app.js',s=>"import {initLocalAI} from './local-ai-ui.js?v=1.9.3';\n"+s.replace('});initHardwareUpload(', '});initLocalAI();initHardwareUpload('));
 edit('index.html',s=>s.replace(/<section class="desktop-download"[\s\S]*?<\/section>/, '').replace('Windows 설치형 v1.8.0','Windows 설치형 v1.9.3 · 무료 로컬 AI').replace('이 브라우저에만 유지됩니다.','이 앱에만 유지됩니다.'));
 edit('style.css',s=>s+'\n.local-ai-shell{display:flex;flex-direction:column;gap:12px;padding:16px;flex:1;min-height:0;overflow:auto}.local-ai-panel{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}.local-ai-panel p{font-size:12px;margin:0}.local-ai-actions{display:flex;gap:8px;flex-wrap:wrap}#localMessages{min-height:150px;flex:1;overflow:auto;max-height:40vh}#localForm>div{display:flex;gap:8px}#localQuestion{flex:1;min-width:0;font:inherit;padding:10px}.local-ai-shell [hidden]{display:none!important}.local-ai-shell>.ai-maker-body{padding:0;min-height:400px}#localStatus{font-size:12px;color:#18746c}\n');
+
+// Build trigger for verified v1.9.3 candidate; UI changes remain desktop-only.

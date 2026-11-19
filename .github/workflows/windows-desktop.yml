@@ -1,5 +1,5 @@
 name: Build Windows Desktop
-# v1.9.4 candidate: verify versioned installer hash and artifact path
+# v1.9.5 candidate: verify versioned installer hash and artifact path
 on:
   push:
     branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119', 'fix/starter-1.9.2-install-validation-20261119']
@@ -50,14 +50,14 @@ jobs:
           if($LASTEXITCODE){throw 'npm install failed'}
           node desktop/node_modules/electron-builder/cli.js --projectDir desktop --win nsis --x64 --publish never --config.directories.output=D:/cubelink-build
           if($LASTEXITCODE){throw 'Installer build failed'}
-          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.9.4-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
+          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.9.5-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
       - name: Install Windows EXE and verify classroom UI
         shell: pwsh
         run: |
           $env:CUBELINK_TEST_PROFILE='D:/cubelink-smoke-profile'
           $env:CUBELINK_SMOKE_FILE='D:/cubelink-build/smoke.json'
           $env:CUBELINK_AI_SMOKE='1'
-          $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.4-x64.exe'
+          $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.5-x64.exe'
           $install=Start-Process $installer -ArgumentList '/S /D=D:\cubelink-installed' -WindowStyle Hidden -Wait -PassThru
           if($install.ExitCode -ne 0){throw "Installer failed: $($install.ExitCode)"}
           $process=Start-Process 'D:/cubelink-installed/CubeLink Starter.exe' -WindowStyle Hidden -PassThru
@@ -70,25 +70,25 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CubeLink-Starter-Windows-1.9.4
+          name: CubeLink-Starter-Windows-1.9.5
           path: |
-            D:/cubelink-build/CubeLinkStarterSetup-1.9.4-x64.exe
+            D:/cubelink-build/CubeLinkStarterSetup-1.9.5-x64.exe
             D:/cubelink-build/SHA256.txt
             D:/cubelink-build/smoke.json
           compression-level: 0
           retention-days: 30
 
 
-      - name: Publish v1.9.4 direct-download installer
+      - name: Publish v1.9.5 direct-download installer
         if: success() && github.ref == 'refs/heads/fix/starter-1.9.2-install-validation-20261119' && github.event_name == 'push'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='desktop-v1.9.4'
-          $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.4-x64.exe'
+          $tag='desktop-v1.9.5'
+          $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.5-x64.exe'
           if(-not (Test-Path -LiteralPath $installer)){throw 'Installer missing'}
           gh release view $tag --repo ${{ github.repository }} *> $null
           if($LASTEXITCODE -eq 0){throw 'Release tag already exists; refusing to overwrite'}
-          gh release create $tag $installer D:/cubelink-build/SHA256.txt --repo ${{ github.repository }} --target ${{ github.sha }} --title "CubeLink Starter Windows v1.9.4" --notes "Windows x64 offline installer. Automated integration, firmware, and packaged application smoke tests passed. The installed app passed automated simulation, streetlight, layout, and basic design assistant checks. Physical Arduino hardware was not tested."
+          gh release create $tag $installer D:/cubelink-build/SHA256.txt --repo ${{ github.repository }} --target ${{ github.sha }} --title "CubeLink Starter Windows v1.9.5" --notes "Windows x64 offline installer. Automated integration, firmware, and packaged application smoke tests passed. The installed app passed automated simulation, streetlight, layout, and basic design assistant checks. Physical Arduino hardware was not tested."
           if($LASTEXITCODE){throw 'GitHub release publication failed'}

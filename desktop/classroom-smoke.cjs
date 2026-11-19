@@ -14,6 +14,15 @@ module.exports=async function verifyClassroom(){
   check(rect?.width>100&&rect.height>40&&rect.bottom<=innerHeight+1,'Panel is missing, collapsed or clipped: '+selector);
  }
  select('example','streetlight');
+ const workspace=document.querySelector('.workspace').getBoundingClientRect();
+ const circuitPanel=document.querySelector('.simulation').getBoundingClientRect();
+ const codePanel=document.querySelector('.code').getBoundingClientRect();
+ const circuit=$('circuit').getBoundingClientRect();
+ const scroller=document.querySelector('.sim-layout').getBoundingClientRect();
+ check(circuitPanel.left>=workspace.right&&Math.abs(circuitPanel.top-workspace.top)<2,'Circuit must be to the right of Blockly');
+ check(codePanel.top>=workspace.bottom,'Code must remain below Blockly');
+ check(circuit.width>=300&&circuit.height>=145&&circuit.top>=scroller.top&&circuit.bottom<=scroller.bottom,'Entire streetlight SVG must fit in the visible panel');
+ check(ledState($('circuit'),'#8c9ba0'),'Streetlight diagram must display all three LED branches');
  $('run').click();
  check($('simStatus').textContent.includes('setup 또는 loop'),'Blank workspace should show an explanation');
  $('viewAnswer').click();$('loadStreetlightAnswer').click();

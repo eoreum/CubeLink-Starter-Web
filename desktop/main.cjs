@@ -71,6 +71,9 @@ async function start(){
  await window.loadURL(APP_ORIGIN+'/index.html');
  window.show();splash.destroy();splash=null;
  if(process.env.CUBELINK_SMOKE_FILE){
+  window.setContentSize(1426,779);
+  await window.webContents.executeJavaScript("localStorage.setItem('cubelink-layout-v2',JSON.stringify({code:220,bottom:120}))");
+  await window.loadURL(APP_ORIGIN+'/index.html');
   const state=await window.webContents.executeJavaScript(`new Promise(resolve=>{const start=Date.now();const check=()=>{if(document.getElementById('missionProgress')?.textContent.includes('/18')||Date.now()-start>45000)resolve({title:document.title,missions:Array.from(document.getElementById('example').options).filter(option=>!option.disabled).length,version:document.querySelector('footer').textContent,desktop:Boolean(window.cubelinkDesktop),serial:!!navigator.serial});else setTimeout(check,100)};check()})`);
   const classroom=await window.webContents.executeJavaScript('('+require('./classroom-smoke.cjs').toString()+')()');
   const health=await fetch(base+'/health',{headers:{Origin:'http://127.0.0.1','X-CubeLink-Token':token}}).then(r=>r.json());

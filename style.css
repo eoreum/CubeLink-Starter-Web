@@ -64,3 +64,17 @@ body{grid-template-rows:48px 58px 44px 27px minmax(0,1fr) 34px 19px}.desktop-dow
  #appPanels .code,#appPanels .monitor,#appPanels .splitter{display:none}
  #appPanels .sim-layout svg{min-height:110px}
 }
+
+/* Desktop window and splitters must keep the interactive circuit beside Blockly. */
+.desktop-app main#appPanels{grid-template-columns:minmax(0,1fr) var(--code-w,38%);grid-template-rows:minmax(0,1fr) var(--bottom-size,27%)}
+.desktop-app #appPanels .workspace{grid-area:1 / 1}
+.desktop-app #appPanels .simulation{grid-area:1 / 2}
+.desktop-app #appPanels .code{display:flex;grid-area:2 / 1}
+.desktop-app #appPanels .monitor{display:flex;grid-area:2 / 2}
+.desktop-app #appPanels .sim-layout{display:flex;flex-direction:column;gap:6px;overflow:auto}
+.desktop-app #appPanels .sim-layout>div:first-child{flex:none;overflow:visible}
+.desktop-app #appPanels .sim-layout #circuit{display:block;width:100%;height:clamp(145px,28vh,290px);min-height:0;max-height:none;aspect-ratio:auto}
+.desktop-app #appPanels .inputs{flex:1 0 auto;min-width:0;overflow:visible;border-left:0;border-top:1px solid var(--line);padding:6px 0 0}
+.desktop-app #appPanels .sim-options{position:static;flex-wrap:wrap}
+.desktop-app #appPanels .splitter.vertical{display:block;top:0;bottom:0}
+.desktop-app #appPanels .splitter.horizontal{display:block}

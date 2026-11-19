@@ -1,4 +1,4 @@
-import {boards,errors,generate} from './engine.js?v=1.5.0-studio1';
+import {boards,errors,generate} from './engine.js?v=1.9.4';
 
 // Small, transparent custom-project composer. It never selects a saved lesson.
 export function composeIdea(text,board='uno'){

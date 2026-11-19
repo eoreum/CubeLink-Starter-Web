@@ -1,31 +1,38 @@
 import {physicalWiringSvg} from './physical-wiring.js?v=1.8.1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=1.8.0';
-import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.5.0-studio1';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.9.4';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-studio1';
 import {initLayout} from './layout.js?v=1.5.0';
-import {parseProject,serializeProject} from './project-store.js?v=1.5.0-studio1';
-import {lessons,missionOrder} from './lessons.js?v=1.5.0-studio1';
-import {renderWiring} from './wiring.js?v=1.5.0-studio1';
+import {parseProject,serializeProject} from './project-store.js?v=1.9.4';
+import {lessons,missionOrder} from './lessons.js?v=1.9.4';
+import {renderWiring} from './wiring.js?v=1.9.4';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-studio1';
-import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.4';
+import {initAiMaker} from './ai-maker-ui.js?v=1.9.4';
 import {initHardwareUpload} from './hardware-ui.js?v=1.8.0';
 const $=id=>document.getElementById(id);
-let activeMission='ledOn',diagramSignature='',completed=new Set();
-let project=blankProject('ledOn'),sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;
+let activeMission='ledOn',diagramSignature='',completed=new Set(),simStartedAt=0,simElapsed=0;
+let project=blankProject('ledOn'),sim=null,running=false,timer,clockTimer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;
 function freshInputs(){return {analog:{A0:512,A1:512,A2:512},digital:{},distance:100,temperature:25,humidity:50}}
 let inputs=freshInputs(),logs={sim:[],hardware:[]};
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').style.display='none',3500)}
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
 function optionSelect(values,value){const s=el('select');values.forEach(v=>{const o=el('option','',v);o.value=v;s.append(o)});s.value=value;if(s.selectedIndex<0){const o=el('option','',value+' (지원 안 됨)');o.value=value;s.append(o);s.value=value}return s}
-function stop(){liveRunner.stop().catch(()=>{});running=false;clearTimeout(timer);$('run').disabled=false;$('stop').disabled=true;$('simStatus').textContent='● 정지';workspace?.highlightBlock(null);sim=null;updateCircuit()}
+function stopSimulation(status='● 정지'){
+ if(running)simElapsed=performance.now()-simStartedAt;
+ running=false;clearTimeout(timer);clearInterval(clockTimer);
+ $('run').textContent='▶ 시뮬레이션';
+ $('simStatus').textContent=status;
+ workspace?.highlightBlock(null);sim=null;updateCircuit();
+}
+function stop(){stopSimulation();simElapsed=0;updateCircuit();liveRunner.stop().catch(()=>{});}
 let workspace,answerWorkspace=null,loading=false,modelSignature='';
 function autosave(){try{project.mission=activeMission;localStorage.setItem(PRACTICE_KEY,serializeProject(project));localStorage.setItem(PRACTICE_KEY+':'+activeMission,serializeProject(project));$('saveStatus').textContent='자동 저장됨';}catch{$('saveStatus').textContent='파일로 저장해 주세요';}}
 function restore(){try{const text=localStorage.getItem(PRACTICE_KEY);if(text){project=parseProject(text);activeMission=project.mission||missionOrder.find(id=>JSON.stringify(examples[id])===JSON.stringify(project))||'blink';project.mission=activeMission;$('saveStatus').textContent='지난 작업 복원됨';}}catch{project=blankProject('ledOn');activeMission='ledOn';$('saveStatus').textContent='복원 실패 · 빈 풀이로 시작';}}
 function loadEditor(){loading=true;Blockly.Events.disable();try{fromModel(Blockly,workspace,project);workspace.clearUndo();modelSignature=JSON.stringify(project)}finally{Blockly.Events.enable();loading=false}Blockly.svgResize(workspace);workspace.scrollCenter();}
 function initEditor(){registerBlocks(Blockly,()=>project.board);workspace=Blockly.inject('blocklyEditor',{toolbox:toolbox(),renderer:'geras',sounds:false,trashcan:false,media:'vendor/media/',grid:{spacing:20,length:3,colour:'#ccc',snap:true},zoom:{controls:false,wheel:true,startScale:.8,maxScale:1.5,minScale:.4,scaleSpeed:1.1},move:{scrollbars:true,drag:true,wheel:true}});loadEditor();workspace.addChangeListener(e=>{if(loading||e.isUiEvent)return;const next={...toModel(workspace,project.board),mission:activeMission};const signature=JSON.stringify(next);if(signature!==modelSignature){stop();project=next;modelSignature=signature;render();autosave()}else updateIssues()});new ResizeObserver(()=>Blockly.svgResize(workspace)).observe($('blocklyEditor'));}
 function updateIssues(){const err=errors(project),warn=warnings(project),loose=orphanCount(workspace);if(loose)warn.push(loose+'개 블록이 setup/loop에 연결되지 않아 실행·코드 생성·프로젝트 저장에서 제외됩니다');$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · 블록을 setup/loop 안에 끼워 넣으세요';$('issues').className=err.length||warn.length?'':'ok';}
-function render(){ $('example').value=activeMission;$('board').value=project.board;$('blockCount').textContent=blockCount(project)+' BLOCKS';const err=errors(project),warn=warnings(project);$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · Studio 방식으로 센서값과 변수를 연결했습니다';$('issues').className=err.length||warn.length?'':'ok';$('run').disabled=err.length>0||project.setup.length+project.loop.length===0;$('download').disabled=err.length>0;$('copy').disabled=err.length>0;$('code').textContent=err.length?'// 블록의 핀 또는 값을 수정하세요.\n// '+err.join('\n// '):generate(project);const watch=$('watchPin').value;const opts=pins(project.board);$('watchPin').replaceChildren(...opts.map(p=>{const o=el('option','',p.startsWith('A')?p:'D'+p);o.value=p;return o}));$('watchPin').value=opts.includes(watch)?watch:'13';renderInputs();updateCircuit();updateIssues()}
+function render(){ $('example').value=activeMission;$('viewAnswer').disabled=!Object.hasOwn(examples,activeMission);$('loadExample').disabled=!Object.hasOwn(examples,activeMission);$('board').value=project.board;$('blockCount').textContent=blockCount(project)+' BLOCKS';const err=errors(project),warn=warnings(project);$('issues').textContent=err.length?'⚠ '+err.join(' · '):warn.length?'⚠ '+warn.join(' · '):'✓ 실행 준비 완료 · Studio 방식으로 센서값과 변수를 연결했습니다';$('issues').className=err.length||warn.length?'':'ok';$('run').disabled=false;$('download').disabled=err.length>0;$('copy').disabled=err.length>0;$('code').textContent=err.length?'// 블록의 핀 또는 값을 수정하세요.\n// '+err.join('\n// '):generate(project);const watch=$('watchPin').value;const opts=pins(project.board);$('watchPin').replaceChildren(...opts.map(p=>{const o=el('option','',p.startsWith('A')?p:'D'+p);o.value=p;return o}));$('watchPin').value=opts.includes(watch)?watch:'13';renderInputs();updateCircuit();updateIssues()}
 function renderInputs(){const host=$('inputs');host.replaceChildren();const title=el('div','eyebrow','가상 센서 입력 · 실행 중 조절 가능');host.append(title);const all=walkProject(project),analog=[...new Set(all.filter(b=>['analogRead','ldr','pot','sound','joystickAxis'].includes(b.type)).map(b=>b.pin))],digital=[...new Set(all.filter(b=>['button','digitalRead','pir','tilt'].includes(b.type)).map(b=>b.pin))];
 function slider(label,value,min,max,change){const row=el('div','input-row'),l=el('label','',label),out=el('output','',value),input=el('input');input.type='range';input.min=min;input.max=max;input.step=1;input.value=value;input.setAttribute('aria-label',label);l.append(out);row.append(l,input);input.oninput=()=>{out.textContent=input.value;change(Number(input.value));updateCircuit()};host.append(row)}
 analog.forEach(pin=>{inputs.analog[pin]??=512;slider(pin+(' · 센서 입력 (ADC)'),inputs.analog[pin],0,1023,v=>inputs.analog[pin]=v)});
@@ -35,18 +42,61 @@ if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100
 if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
 let physicalView=false;
 function updateCircuit(){
- const diagramProject=$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
+ const showOwn=$('wiringMode').value==='mine'||!Object.hasOwn(examples,activeMission);
+ const diagramProject=showOwn?project:answerProject(activeMission,project.board);
  const signature=JSON.stringify(diagramProject)+'|'+$('wiringMode').value+'|'+physicalView;
- if(signature!==diagramSignature){const physical=physicalView?physicalWiringSvg(diagramProject):null;if(physical){$('circuit').setAttribute('viewBox','0 0 1100 '+physical.height);$('circuit').innerHTML=physical.body;}else renderWiring($('circuit'),diagramProject,(lessons[activeMission]?.title||'새 프로젝트')+($('wiringMode').value==='mine'?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
- for(const node of $('circuit').querySelectorAll('[data-led-pin]'))node.setAttribute('fill',sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0');
+ if(signature!==diagramSignature){const physical=physicalView?physicalWiringSvg(diagramProject):null;if(physical){$('circuit').setAttribute('viewBox','0 0 1100 '+physical.height);$('circuit').innerHTML=physical.body;}else renderWiring($('circuit'),diagramProject,(lessons[activeMission]?.title||'새 프로젝트')+(showOwn?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
+ for(const node of $('circuit').querySelectorAll('[data-led-pin]')){
+  const fill=sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0';
+  if(node.getAttribute('fill')!==fill)node.setAttribute('fill',fill);
+ }
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
  $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW'))].filter(Boolean).join(' · ');
- $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);
+ updateClock();$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);
+}
+function updateClock(){
+ $('simClock').textContent=((running?performance.now()-simStartedAt:simElapsed)/1000).toFixed(2)+' s';
 }
 function appendLog(source,line){logs[source].push(line);if(logs[source].length>300)logs[source].splice(0,logs[source].length-300);if($('monitorSource').value===source)showLogs()}
 function showLogs(){$('serialLog').textContent=logs[$('monitorSource').value].join('\n');$('serialLog').scrollTop=$('serialLog').scrollHeight}
-function tick(){if(!running)return;const list=sim.project[phase];if(index>=list.length){phase='loop';index=0;timer=setTimeout(tick,16);return}workspace.highlightBlock(connectedIds(workspace,phase)[index]||null);const before=sim.logs.length;const result=sim.step(list[index++]);if(result.error){appendLog('sim','⚠ '+result.error);$('simStatus').textContent='● 실행 중 · 출력 차단'}else $('simStatus').textContent='● 실행 중';sim.logs.slice(before).forEach(s=>appendLog('sim',s));sim.logs.length=0;sim.faults.length=0;updateCircuit();timer=setTimeout(tick,result.wait)}
-$('run').onclick=()=>{if(errors(project).length||project.setup.length+project.loop.length===0)return;stop();sim=new Simulation(project,inputs);running=true;phase='setup';index=0;$('run').disabled=true;$('stop').disabled=false;appendLog('sim','── 새 실행 · setup → loop ──');tick()};$('stop').onclick=stop;$('watchPin').onchange=updateCircuit;$('board').onchange=()=>{stop();project.board=$('board').value;loadEditor();render();autosave()};$('loadExample').onclick=()=>$('resetMissionDialog').showModal();
+function failSimulation(message){
+ appendLog('sim','⚠ '+message);
+ stopSimulation('⚠ '+message);
+ toast(message);
+}
+function tick(){
+ if(!running)return;
+ try{
+  const list=sim.project[phase];
+  if(index>=list.length){
+   phase='loop';index=0;updateCircuit();timer=setTimeout(tick,16);return;
+  }
+  workspace.highlightBlock(connectedIds(workspace,phase)[index]||null);
+  const result=sim.step(list[index++]);
+  if(result.error){failSimulation(result.error);return;}
+  sim.logs.forEach(line=>appendLog('sim',line));
+  sim.logs.length=0;
+  updateCircuit();timer=setTimeout(tick,result.wait);
+ }catch(error){failSimulation('시뮬레이션 실행 오류: '+error.message);}
+}
+$('run').onclick=()=>{
+ try{
+  if(running){stopSimulation();return;}
+  $('monitorSource').value='sim';showLogs();
+  const issues=errors(project);
+  if(issues.length){failSimulation(issues.join(' · '));return;}
+  if(!project.setup.length&&!project.loop.length){
+   failSimulation('setup 또는 loop에 실행할 블록을 연결하세요.');return;
+  }
+  liveRunner.stop().catch(()=>{});
+  sim=new Simulation(project,inputs);
+  running=true;simStartedAt=performance.now();clockTimer=setInterval(updateClock,50);phase='setup';index=0;
+  $('run').textContent='■ 정지';
+  $('simStatus').textContent='● 실행 중';
+  appendLog('sim','── 새 실행 · setup → loop ──');tick();
+ }catch(error){failSimulation('시뮬레이션 시작 오류: '+error.message);}
+};
+$('watchPin').onchange=updateCircuit;$('board').onchange=()=>{stop();project.board=$('board').value;loadEditor();render();autosave()};$('loadExample').onclick=()=>$('resetMissionDialog').showModal();
 function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type})),a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('download').onclick=()=>{if(errors(project).length)return;download('CubeLinkStarter.ino',generate(project),'text/plain;charset=utf-8')};$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(generate(project));toast('Arduino 코드를 복사했습니다')}catch{toast('복사 권한이 없습니다. .ino 저장을 사용하세요.')}};$('save').onclick=()=>download('CubeLinkStarter.json',serializeProject(project),'application/json');$('open').onclick=()=>$('file').click();$('file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>200000)throw Error('파일이 너무 큽니다');const p=parseProject(await file.text());autosave();stop();project=p;activeMission=p.mission||activeMission;project.mission=activeMission;loadEditor();render();showLesson();autosave();toast('프로젝트를 불러왔습니다')}catch(err){toast('불러오기 실패: '+err.message)}e.target.value=''};
 $('help').onclick=()=>{showLesson();$('helpDialog').showModal()};$('example').onchange=()=>switchMission($('example').value);
@@ -85,6 +135,7 @@ prepareMissions();initCircuitView();restore();initEditor();initLayout(workspace)
 
 function prepareMissions(){
  $('example').replaceChildren(...missionOrder.map(id=>{const o=el('option','',lessons[id].title);o.value=id;return o}));
+ const custom=el('option','','자유 프로젝트');custom.value='custom';custom.disabled=true;$('example').append(custom);
  try{const saved=JSON.parse(localStorage.getItem('cubelink-mission-progress-v1'));completed=new Set(Array.isArray(saved)?saved.filter(id=>missionOrder.includes(id)):[]);}catch{completed=new Set();}
  $('previousMission').onclick=()=>{const i=missionOrder.indexOf(activeMission);if(i>0)switchMission(missionOrder[i-1])};
  $('nextMission').onclick=()=>{const i=missionOrder.indexOf(activeMission);if(i<missionOrder.length-1)switchMission(missionOrder[i+1])};
@@ -93,6 +144,11 @@ function prepareMissions(){
  $('wiringMode').onchange=updateCircuit;
  $('viewAnswer').onclick=openAnswer;
  $('closeAnswer').onclick=()=>$('answerDialog').close();
+ $('loadStreetlightAnswer').onclick=()=>{
+  if(activeMission!=='streetlight'||blockCount(project))return;
+  stop();project=answerProject(activeMission,project.board);
+  loadEditor();render();autosave();$('answerDialog').close();
+ };
  $('confirmMissionReset').onclick=()=>{$('resetMissionDialog').close();switchMission(activeMission,true)};
 }
 function showProgress(){const i=missionOrder.indexOf(activeMission);$('previousMission').disabled=i<=0;$('nextMission').disabled=i>=missionOrder.length-1;$('markMission').textContent=completed.has(activeMission)?'✓ 내 확인 완료':'□ 내 확인 완료';$('missionProgress').textContent=completed.size+'/'+missionOrder.length+' 확인';}
@@ -108,6 +164,7 @@ function switchMission(id,reset=false){
 
 function openAnswer(){
  const reference=answerProject(activeMission,project.board);
+ $('loadStreetlightAnswer').hidden=activeMission!=='streetlight'||Boolean(blockCount(project));
  $('answerTitle').textContent='참고 정답 · '+lessons[activeMission].title;
  $('answerCode').textContent=generate(reference);
  $('answerDialog').showModal();

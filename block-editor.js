@@ -1,4 +1,4 @@
-import {expression,pins,statement} from './engine.js?v=1.5.0-studio1';
+import {expression,pins,statement} from './engine.js?v=1.9.4';
 
 const compareFromBlockly={EQ:'==',NEQ:'!=',LT:'<',LTE:'<=',GT:'>',GTE:'>='};
 const compareToBlockly=Object.fromEntries(Object.entries(compareFromBlockly).map(([key,value])=>[value,key]));

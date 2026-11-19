@@ -1,4 +1,4 @@
-import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=1.5.0-studio1';
+import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=1.9.4';
 
 export const STORAGE_KEY = 'cubelink-starter-project-v1';
 export function parseProject(text) {
@@ -10,7 +10,7 @@ export function parseProject(text) {
   const nodes=walkProject(clean);if(nodes.length>500)throw Error('프로젝트의 블록이 너무 많습니다.');
   for(const node of nodes)for(const value of Object.values(node))if(typeof value==='string'&&value.length>2000)throw Error('블록의 텍스트가 너무 깁니다.');
   const issues=errors(clean); if (issues.length) throw Error(issues.join(' · '));
-  if(typeof migrated.mission==='string'&&Object.hasOwn(examples,migrated.mission))clean.mission=migrated.mission;
+  if(typeof migrated.mission==='string'&&(migrated.mission==='custom'||Object.hasOwn(examples,migrated.mission)))clean.mission=migrated.mission;
   return clean;
 }
 export function serializeProject(project) { return JSON.stringify({version:2,project},null,2); }

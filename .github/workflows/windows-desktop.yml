@@ -2,7 +2,7 @@ name: Build Windows Desktop
 # v1.9.3 candidate: verify versioned installer hash and artifact path
 on:
   push:
-    branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119', 'fix/starter-1.9.3-install-validation-20261119']
+    branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119', 'fix/starter-1.9.2-install-validation-20261119']
     paths: ['desktop/**', '.github/workflows/windows-desktop.yml']
   workflow_dispatch:
 permissions:

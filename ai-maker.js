@@ -41,6 +41,16 @@ export function detectPlan(text){
 export function replyToIdea(text,current=emptyDesign()){
  const idea=String(text).trim().slice(0,500);
  if(!idea)return {design:current,text:'만들고 싶은 것을 한 문장으로 적어 주세요. 예: “어두워지면 LED가 켜지는 가로등”'};
+ const ledCount=Number((idea.match(/(?:led|엘이디)\\s*(\\d+)\\s*개/i)||idea.match(/(\\d+)\\s*개의?\\s*(?:led|엘이디)/i)||[])[1]||0);
+ if(ledCount>=2 && /led|엘이디/i.test(idea)){
+   const pins=Array.from({length:Math.min(ledCount,8)},(_,i)=>i+2);
+   const sequential=/번갈|차례|순서|하나씩|교대|돌아가|릴레이/i.test(idea);
+   const behavior=sequential?'차례로 하나씩 켜지고 나머지는 꺼지도록':'동시에 켜지도록';
+   const wiring=pins.map((pin,i)=>`LED${i+1}: D${pin} → 220~330Ω 저항 → LED 긴 다리(+), LED 짧은 다리(-) → GND`).join('\\n');
+   const setup=pins.map(pin=>`  pinMode(${pin}, OUTPUT);`).join('\\n');
+   const loop=sequential?pins.map(pin=>`  digitalWrite(${pin}, HIGH);\\n  delay(500);\\n  digitalWrite(${pin}, LOW);`).join('\\n'):pins.map(pin=>`  digitalWrite(${pin}, HIGH);`).join('\\n');
+   return {design:{stage:'discover',idea,planId:null},text:`요청을 이해했습니다. LED ${ledCount}개를 ${behavior} 만들겠습니다.\\n\\n배선 안내 (Arduino Uno R3):\\n${wiring}\\n\\nArduino 코드:\\nvoid setup() {\\n${setup}\\n}\\nvoid loop() {\\n${loop}\\n}\\n\\n이 답변은 배선·코드 안내입니다. 현재 기초설계 도우미는 이 맞춤 프로젝트를 블록 작업 공간에 자동 삽입하지 못합니다. 원하시면 이 코드를 Arduino IDE에 붙여 넣어 업로드할 수 있습니다.`};
+ }
  const detected=detectPlan(idea);
  if(!detected)return {design:{stage:'discover',idea,planId:null},text:'좋은 출발이에요. Starter 기초 단계에서는 LED, 버튼, 가변저항, 빛·거리·온도·온습도·소리·움직임·기울기 센서 또는 조이스틱 중 무엇을 쓰고 싶은지와 어떤 동작을 원하는지 알려 주세요.'};
  const plan=getPlan(detected);

@@ -37,7 +37,9 @@ test('legacy v1 student projects migrate to the Studio-style v2 model',()=>{
 });
 
 test('simulation evaluates variables, conditions, and sensor values',()=>{
- const sim=new Simulation(examples.streetlight,{analog:{A0:300},digital:{},distance:100});for(const block of examples.streetlight.setup)sim.step(block);for(const block of examples.streetlight.loop)sim.step(block);assert.equal(sim.variables.lightValue,300);assert.equal(sim.outputs['13'],1);assert.equal(sim.logs[0],'300');
+ const sim=new Simulation(examples.streetlight,{analog:{A0:300},digital:{},distance:100});for(const block of examples.streetlight.setup)sim.step(block);for(const block of examples.streetlight.loop)sim.step(block);assert.equal(sim.variables.lightValue,300);for(const pin of ['11','12','13'])assert.equal(sim.outputs[pin],1);assert.equal(sim.logs[0],'300');
+ sim.inputs.analog.A0=500;sim.execute(examples.streetlight.loop);
+ for(const pin of ['11','12','13'])assert.equal(sim.outputs[pin],0);
  const nested={board:'uno',setup:[],loop:[{type:'if',condition:{type:'number',value:1},then:[{type:'delay',ms:25}],else:[]}]};const nestedSim=new Simulation(nested);nestedSim.step(nested.loop[0]);assert.equal(nestedSim.time,25);
 });
 
@@ -52,4 +54,13 @@ test('AI plans use the verified mission model and selected board',()=>{
 
 test('conversation and design state survive a safe round trip',()=>{
  const original={messages:[{role:'assistant',text:'안내'},{role:'user',text:'가로등'}],design:{stage:'proposed',idea:'가로등',planId:'streetlight'}};assert.deepEqual(parseSession(serializeSession(original)),original);assert.equal(parseSession('{broken').design.planId,null);
+});
+
+test('basic assistant prepares a three-LED sequential Blockly project',()=>{
+ const result=replyToIdea('LED 3개를 번갈아 켜지게 만들어줘.',emptyDesign(),'nano');
+ assert.deepEqual(errors(result.draft.project),[]);
+ assert.deepEqual(result.draft.project.setup.map(block=>block.pin),['2','3','4']);
+ assert.equal(result.draft.project.board,'nano');
+ assert.match(result.text,/D2[\s\S]*D3[\s\S]*D4[\s\S]*delay\(500\)/);
+ assert.equal(replyToIdea('LED 9개를 번갈아 켜줘').draft,undefined);
 });

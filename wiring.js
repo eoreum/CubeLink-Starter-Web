@@ -1,4 +1,4 @@
-import {boards,key,errors,walkProject} from './engine.js?v=1.5.0-studio1';
+import {boards,key,errors,walkProject} from './engine.js?v=1.9.4';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
@@ -71,8 +71,29 @@ function componentPicture(c,y) {
  }
  return {body:s+'</g>',targets};
 }
+function streetlightDiagram(title,plan){
+ const height=440;
+ let body='<rect width="1100" height="440" rx="14" fill="#f3f8fa"/>'+svgText(30,38,title,29);
+ body+='<rect x="35" y="75" width="185" height="325" rx="14" fill="#087f8c"/>'+svgText(55,112,plan.board,21,'white');
+ const colors=['#a86712','#267394','#8963a0'];
+ for(const [i,pin] of ['11','12','13'].entries()){
+  const y=148+i*54;
+  body+=svgText(145,y+7,'D'+pin,22,'white');
+  body+='<path data-wire="D'+pin+'" d="M220 '+y+' H338 M422 '+y+' H625 M695 '+y+' H1000" fill="none" stroke="'+colors[i]+'" stroke-width="4"/>';
+  body+=resistor(380,y,false);
+  body+='<rect data-led-pin="'+pin+'" x="625" y="'+(y-17)+'" width="70" height="34" rx="17" fill="#8c9ba0" stroke="#546974" stroke-width="2"/>';
+  body+=svgText(586,y+7,'+',21)+svgText(710,y+7,'−',21)+svgText(752,y+7,'LED D'+pin,23);
+ }
+ body+=svgText(154,322,'5V',22,'white')+svgText(154,367,'A0',22,'white');
+ body+='<path data-wire="5V" d="M220 315 H342" stroke="#b74646" stroke-width="4"/><circle cx="374" cy="315" r="32" fill="#d6b56d" stroke="#8f743b" stroke-width="3"/><path d="M352 303 h44 l-44 12 h44 l-44 12 h44" fill="none" stroke="#8d4e40" stroke-width="3"/>';
+ body+='<path data-wire="A0" d="M406 315 H605 M515 315 V360 H220" fill="none" stroke="#267c81" stroke-width="4"/><circle cx="515" cy="315" r="7" fill="#267c81"/>';
+ body+=resistor(647,315,false,'10kΩ')+'<path data-wire="GND" d="M689 315 H1000 M1000 148 V395 H220" fill="none" stroke="#405768" stroke-width="4"/>';
+ body+=svgText(145,393,'GND',21,'white')+svgText(349,372,'LDR',22)+svgText(694,365,'A0 접점: 밝을수록 값 증가',22);
+ return {body,height,plan};
+}
 export function wiringSvg(project,title='아두이노 연결 그림') {
  const plan=connectionPlan(project),items=plan.components,total=Math.max(430,90+items.length*470);
+ if(project.mission==='streetlight'&&items.length===4&&['ldr-A0','led-11','led-12','led-13'].every(id=>items.some(item=>item.id===id)))return streetlightDiagram(title,plan);
  let body='<rect width="1100" height="'+total+'" rx="14" fill="#f3f8fa"/>'+svgText(24,32,title,23)+svgText(24,61,'색 선의 양 끝과 핀 이름을 확인하세요. 보드 모델별 실제 핀 위치는 제품 표기를 확인하세요.',15);
  if(!items.length){const b=boardPicture(85,[],plan.board);body+=b.body+'<path d="M24 230 H10 V380 H630" fill="none" stroke="#485d6b" stroke-width="12"/><rect x="630" y="350" width="190" height="80" rx="8" fill="#dbe7ed"/>'+svgText(655,390,'PC · USB',25)+svgText(430,175,'USB 케이블만 연결',28)+svgText(430,220,'외부 부품은 필요 없습니다.',19);}
  for(const [i,c]of items.entries()) {

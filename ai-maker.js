@@ -1,4 +1,4 @@
-import {boards,examples,errors,generate} from './engine.js?v=1.5.0-studio1';
+import {boards,examples,errors,generate} from './engine.js?v=1.9.4';
 
 export const AI_MAKER_STORAGE_KEY='cubelink-starter-ai-maker-v1';
 const plans={
@@ -6,7 +6,7 @@ const plans={
  buttonLed:{mission:'buttonLed',title:'버튼으로 LED 켜기',summary:'버튼을 누르면 D13 LED가 켜지는 입력·출력 프로젝트',parts:['Arduino 보드 1개','택트 스위치 1개','LED 1개 (내장 LED 사용 가능)','220~330Ω 저항 1개','점퍼선','브레드보드']},
  pot:{mission:'pot',title:'가변저항 값 읽기',summary:'가변저항을 돌려 A1의 0~1023 값을 시리얼로 확인하는 프로젝트',parts:['Arduino 보드 1개','10kΩ 가변저항 1개','점퍼선','브레드보드']},
  ldr:{mission:'ldr',title:'빛 센서 값 읽기',summary:'LDR 분압 회로의 A0 값을 읽어 밝기 변화를 관찰하는 프로젝트',parts:['Arduino 보드 1개','LDR 1개','10kΩ 저항 1개','점퍼선','브레드보드']},
- streetlight:{mission:'streetlight',title:'스마트 가로등',summary:'어두워지면 D13 LED가 켜지는 빛 센서 프로젝트',parts:['Arduino 보드 1개','LDR 1개','10kΩ 저항 1개','LED 1개','220~330Ω 저항 1개','점퍼선','브레드보드']},
+ streetlight:{mission:'streetlight',title:'스마트 가로등',summary:'어두워지면 D11, D12, D13 LED가 켜지는 빛 센서 프로젝트',parts:['Arduino 보드 1개','LDR 1개','10kΩ 저항 1개','LED 3개','220~330Ω 저항 3개','점퍼선','브레드보드']},
  distance:{mission:'distance',title:'초음파 거리 측정',summary:'HC-SR04로 거리를 재고 시리얼 모니터에 cm 값을 표시하는 프로젝트',parts:['Arduino 보드 1개','HC-SR04 초음파 센서 1개','점퍼선','브레드보드']},
  distanceLed:{mission:'distanceLed',title:'가까워지면 LED 켜기',summary:'물체가 20cm보다 가까우면 D13 LED가 켜지는 프로젝트',parts:['Arduino 보드 1개','HC-SR04 초음파 센서 1개','LED 1개','220~330Ω 저항 1개','점퍼선','브레드보드']},
  temperature:{mission:'temperature',title:'온도 센서 읽기',summary:'TMP36의 A2 전압을 섭씨 온도로 바꾸어 확인하는 프로젝트',parts:['Arduino 보드 1개','TMP36 온도 센서 1개','점퍼선','브레드보드']},
@@ -38,18 +38,29 @@ export function detectPlan(text){
  if(led)return null;
  return null;
 }
-export function replyToIdea(text,current=emptyDesign()){
+export function replyToIdea(text,current=emptyDesign(),board='uno'){
  const idea=String(text).trim().slice(0,500);
  if(!idea)return {design:current,text:'만들고 싶은 것을 한 문장으로 적어 주세요. 예: “어두워지면 LED가 켜지는 가로등”'};
- const ledCount=Number((idea.match(/(?:led|엘이디)\\s*(\\d+)\\s*개/i)||idea.match(/(\\d+)\\s*개의?\\s*(?:led|엘이디)/i)||[])[1]||0);
- if(ledCount>=2 && /led|엘이디/i.test(idea)){
-   const pins=Array.from({length:Math.min(ledCount,8)},(_,i)=>i+2);
-   const sequential=/번갈|차례|순서|하나씩|교대|돌아가|릴레이/i.test(idea);
-   const behavior=sequential?'차례로 하나씩 켜지고 나머지는 꺼지도록':'동시에 켜지도록';
-   const wiring=pins.map((pin,i)=>`LED${i+1}: D${pin} → 220~330Ω 저항 → LED 긴 다리(+), LED 짧은 다리(-) → GND`).join('\\n');
-   const setup=pins.map(pin=>`  pinMode(${pin}, OUTPUT);`).join('\\n');
-   const loop=sequential?pins.map(pin=>`  digitalWrite(${pin}, HIGH);\\n  delay(500);\\n  digitalWrite(${pin}, LOW);`).join('\\n'):pins.map(pin=>`  digitalWrite(${pin}, HIGH);`).join('\\n');
-   return {design:{stage:'discover',idea,planId:null},text:`요청을 이해했습니다. LED ${ledCount}개를 ${behavior} 만들겠습니다.\\n\\n배선 안내 (Arduino Uno R3):\\n${wiring}\\n\\nArduino 코드:\\nvoid setup() {\\n${setup}\\n}\\nvoid loop() {\\n${loop}\\n}\\n\\n이 답변은 배선·코드 안내입니다. 현재 기초설계 도우미는 이 맞춤 프로젝트를 블록 작업 공간에 자동 삽입하지 못합니다. 원하시면 이 코드를 Arduino IDE에 붙여 넣어 업로드할 수 있습니다.`};
+ const ledCount=Number((idea.match(/(?:led|엘이디)\s*(\d+)\s*개/i)||idea.match(/(\d+)\s*개의?\s*(?:led|엘이디)/i)||[])[1]||0);
+ if(ledCount>=2){
+   const design={stage:'discover',idea,planId:null};
+   const sequential=/번갈|차례|순서|하나씩|교대|돌아가/i.test(idea);
+   const simultaneous=/동시에|한꺼번에|모두|전부/i.test(idea);
+   const extraParts=/센서|버튼|스위치|서보|모터|릴레이|부저|조도|거리|블루투스|wifi|lcd|oled/i.test(idea);
+   if(ledCount>8||extraParts||sequential===simultaneous)
+     return {design,text:'LED '+ledCount+'개 요청을 확인했습니다. 기초설계 도우미의 자동 생성 범위는 LED 2~8개의 순차 또는 동시 점등입니다. 이 요청은 블록으로 자동 생성할 수 없습니다.'};
+   const pins=Array.from({length:ledCount},(_,i)=>String(i+2));
+   const write=(pin,state)=>({type:'write',pin,state});
+   const project={
+     board,mission:'custom',
+     setup:pins.map(pin=>({type:'mode',pin,mode:'OUTPUT'})),
+     loop:sequential?pins.flatMap(pin=>[write(pin,'HIGH'),{type:'delay',ms:500},write(pin,'LOW')]):pins.map(pin=>write(pin,'HIGH'))
+   };
+   const code=generate(project);
+   const wiring=pins.map((pin,i)=>'LED '+(i+1)+': D'+pin+' → 220~330Ω 저항 → 긴 다리(+). 짧은 다리(−) → GND').join('\n');
+   const note=sequential?'각 LED를 0.5초씩 순서대로 하나만 켭니다.':'LED를 모두 켭니다.';
+   const draft={project,code,parts:['LED '+ledCount+'개','220~330Ω 저항 '+ledCount+'개'],title:'LED '+ledCount+'개 '+(sequential?'순차 점등':'동시 점등'),note};
+   return {design,draft,text:note+'\n전원을 분리하고 다음과 같이 배선하세요.\n'+wiring+'\n\nArduino 코드\n'+code+'\n개발하기에서 새 프로젝트를 적용하면 Blockly 블록이 생성됩니다.'};
  }
  const detected=detectPlan(idea);
  if(!detected)return {design:{stage:'discover',idea,planId:null},text:'좋은 출발이에요. Starter 기초 단계에서는 LED, 버튼, 가변저항, 빛·거리·온도·온습도·소리·움직임·기울기 센서 또는 조이스틱 중 무엇을 쓰고 싶은지와 어떤 동작을 원하는지 알려 주세요.'};
@@ -83,6 +94,6 @@ export function buildProject(planId,board='uno'){
 }
 export function initialMessages(){return [{role:'assistant',text:'안녕하세요! 만들고 싶은 장치를 말해 주세요. Starter 기초 범위에서 아이디어를 정리하고, 필요한 부품과 블록 설계를 함께 준비할게요.'}];}
 export function parseSession(text){
- try{const data=JSON.parse(text);if(data?.version!==1||!Array.isArray(data.messages)||data.messages.length>60)throw Error();const messages=data.messages.filter(m=>['assistant','user'].includes(m?.role)&&typeof m.text==='string').map(m=>({role:m.role,text:m.text.slice(0,1000)}));const design=data.design&&['discover','proposed'].includes(data.design.stage)?{stage:data.design.stage,idea:String(data.design.idea||'').slice(0,500),planId:plans[data.design.planId]?data.design.planId:null}:emptyDesign();return {messages:messages.length?messages:initialMessages(),design};}catch{return {messages:initialMessages(),design:emptyDesign()};}
+ try{const data=JSON.parse(text);if(data?.version!==1||!Array.isArray(data.messages)||data.messages.length>60)throw Error();const messages=data.messages.filter(m=>['assistant','user'].includes(m?.role)&&typeof m.text==='string').map(m=>({role:m.role,text:m.text.slice(0,4000)}));const design=data.design&&['discover','proposed'].includes(data.design.stage)?{stage:data.design.stage,idea:String(data.design.idea||'').slice(0,500),planId:plans[data.design.planId]?data.design.planId:null}:emptyDesign();return {messages:messages.length?messages:initialMessages(),design};}catch{return {messages:initialMessages(),design:emptyDesign()};}
 }
 export function serializeSession(session){return JSON.stringify({version:1,messages:session.messages.slice(-60),design:session.design});}

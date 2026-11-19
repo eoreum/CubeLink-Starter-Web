@@ -71,10 +71,11 @@ async function start(){
  await window.loadURL(APP_ORIGIN+'/index.html');
  window.show();splash.destroy();splash=null;
  if(process.env.CUBELINK_SMOKE_FILE){
-  const state=await window.webContents.executeJavaScript(`new Promise(resolve=>{const start=Date.now();const check=()=>{if(document.getElementById('missionProgress')?.textContent.includes('/18')||Date.now()-start>45000)resolve({title:document.title,missions:document.getElementById('example').options.length,version:document.querySelector('footer').textContent,desktop:Boolean(window.cubelinkDesktop),serial:!!navigator.serial});else setTimeout(check,100)};check()})`);
+  const state=await window.webContents.executeJavaScript(`new Promise(resolve=>{const start=Date.now();const check=()=>{if(document.getElementById('missionProgress')?.textContent.includes('/18')||Date.now()-start>45000)resolve({title:document.title,missions:Array.from(document.getElementById('example').options).filter(option=>!option.disabled).length,version:document.querySelector('footer').textContent,desktop:Boolean(window.cubelinkDesktop),serial:!!navigator.serial});else setTimeout(check,100)};check()})`);
+  const classroom=await window.webContents.executeJavaScript('('+require('./classroom-smoke.cjs').toString()+')()');
   const health=await fetch(base+'/health',{headers:{Origin:'http://127.0.0.1','X-CubeLink-Token':token}}).then(r=>r.json());
   let ai;
   if(process.env.CUBELINK_AI_SMOKE==='1'){await localAI.prepare();const result=await localAI.chat([{role:'user',content:'한국어로 LED가 무엇인지 한 문장으로 설명해 줘.'}]);ai={...(await localAI.status()),text:result.text};}
-  await fs.writeFile(process.env.CUBELINK_SMOKE_FILE,JSON.stringify({state,health,ai},null,2));app.quit();
+  await fs.writeFile(process.env.CUBELINK_SMOKE_FILE,JSON.stringify({state,classroom,health,ai},null,2));app.quit();
  }
 }

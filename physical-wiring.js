@@ -1,4 +1,4 @@
-import {walkProject} from './engine.js?v=1.5.0-studio1';
+import {walkProject} from './engine.js?v=1.9.4';
 // Coordinates are defined once in the SVG viewBox. Wires and component leads
 // reference the same hole centers, so responsive scaling cannot cause drift.
 export function physicalWiringSvg(project){

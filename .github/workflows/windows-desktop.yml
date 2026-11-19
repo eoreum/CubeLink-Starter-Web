@@ -82,10 +82,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='desktop-v1.9.3'
+          $tag='desktop-v1.9.3-layoutfix'
           $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.3-x64.exe'
           if(-not (Test-Path -LiteralPath $installer)){throw 'Installer missing'}
           gh release view $tag --repo ${{ github.repository }} *> $null
           if($LASTEXITCODE -eq 0){throw 'Release tag already exists; refusing to overwrite'}
-          gh release create $tag $installer D:/cubelink-build/SHA256.txt --repo ${{ github.repository }} --target ${{ github.sha }} --title "CubeLink Starter Windows v1.9.3" --notes "Windows x64 offline installer. Automated integration, firmware, and packaged application smoke tests passed. Simulation UI and hardware require classroom verification."
+          gh release create $tag $installer D:/cubelink-build/SHA256.txt --repo ${{ github.repository }} --target ${{ github.sha }} --title "CubeLink Starter Windows v1.9.3 Layout Fix" --notes "Windows x64 offline installer. Automated integration, firmware, and packaged application smoke tests passed. Simulation UI and hardware require classroom verification."
           if($LASTEXITCODE){throw 'GitHub release publication failed'}

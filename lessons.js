@@ -238,7 +238,13 @@ Object.assign(lessons,{
   sound:{title:'15. 소리 센서 읽기',time:'10분',goal:'마이크 모듈의 아날로그 소리 크기를 읽습니다.',wiring:['소리 센서 VCC → 5V, GND → GND, AO → A2.'],steps:['박수나 주변 소리에 따라 A2 값이 변하는지 관찰합니다.','기준값을 정해 큰 소리를 구분해 봅니다.'],checks:['조용할 때와 소리가 날 때 값이 달라집니다.'],note:'이 값은 데시벨(dB)이 아니라 모듈의 원시 ADC 값입니다.'},
   pir:{title:'16. PIR 움직임 감지',time:'15분',goal:'PIR 센서의 디지털 움직임 신호를 읽습니다.',wiring:['PIR VCC → 5V, GND → GND, OUT → D3.'],steps:['D3을 INPUT으로 설정합니다.','움직임 감지값 0/1을 시리얼로 확인합니다.'],checks:['움직임이 있을 때 감지값이 바뀝니다.'],note:'PIR 센서는 전원을 넣은 뒤 안정화 시간이 필요합니다.'},
   tilt:{title:'17. 기울기 센서 읽기',time:'10분',goal:'기울기 스위치의 접점 상태를 디지털 값으로 읽습니다.',wiring:['기울기 스위치 한쪽 → D4, 다른 쪽 → GND. INPUT_PULLUP을 사용합니다.'],steps:['보드를 기울였을 때 값이 바뀌는지 확인합니다.','INPUT_PULLUP의 0/1 방향을 설명합니다.'],checks:['기울기 상태에 따라 시리얼 값이 바뀝니다.'],note:'센서 방향과 제품 구조에 따라 0/1 상태가 반대로 보일 수 있습니다.'},
+  servo:{title:'19. 서보모터 각도 제어',time:'15분',
+    goal:'서보모터 신호를 D9로 보내 0°, 90°, 180° 위치를 차례로 확인합니다.',
+    wiring:['서보 신호선 → D9. 서보 전원선과 접지선은 제품 정격에 맞는 외부 전원에 연결합니다.','외부 전원 GND와 Arduino GND를 함께 연결합니다.'],
+    steps:['서보모터 도구함에서 각도 블록을 loop에 놓고 D9를 선택합니다.','각도를 0°, 90°, 180°로 지정하고 각 블록 뒤에 750ms 기다리기를 연결합니다.','시뮬레이션을 실행해 회로도에서 축의 방향과 각도 표시를 확인합니다.'],
+    checks:['각도가 0° → 90° → 180°로 반복됩니다.','Arduino 코드에서 Servo.h와 D9 연결, 각도 설정을 확인합니다.'],
+    note:'실물은 Arduino IDE에서 Servo 라이브러리를 설치하고 생성된 .ino를 업로드해 실행합니다.'},
   joystick:{title:'18. 조이스틱 X·Y·버튼',time:'15분',goal:'조이스틱의 두 아날로그 축과 버튼을 함께 읽습니다.',wiring:['VRx → A0, VRy → A1, SW → D2, VCC → 5V, GND → GND.'],steps:['X축과 Y축을 서로 다른 변수에 저장합니다.','버튼은 INPUT_PULLUP으로 읽습니다.','세 값을 시리얼로 차례로 출력합니다.'],checks:['중앙에서 X·Y가 약 512입니다.','버튼을 누르면 값이 0으로 바뀝니다.'],note:'실제 조이스틱의 중심값은 정확히 512가 아닐 수 있습니다.'}
 });
 
-export const missionOrder=["ledOn","blink","serial3","counter","button","buttonLed","pot","ldr","sensors","distance","distanceLed","streetlight","temperature","dht","sound","pir","tilt","joystick"];
+export const missionOrder=["ledOn","blink","serial3","counter","button","buttonLed","pot","ldr","sensors","distance","distanceLed","streetlight","temperature","dht","sound","pir","tilt","joystick","servo"];

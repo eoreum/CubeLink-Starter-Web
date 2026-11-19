@@ -1,12 +1,12 @@
-import {LiveChannel,LiveRunner} from './live-runner.js?v=1.8.0';
-import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.5.0-studio1';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.5.0-studio1';
+import {LiveChannel,LiveRunner} from './live-runner.js?v=1.9.5-servo';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.9.5-servo';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.9.5-servo';
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
-import {parseProject,serializeProject} from './project-store.js?v=1.5.0-studio1';
-import {lessons,missionOrder} from './lessons.js?v=1.5.0-studio1';
-import {renderWiring} from './wiring.js?v=1.5.0-studio1';
+import {parseProject,serializeProject} from './project-store.js?v=1.9.5-servo';
+import {lessons,missionOrder} from './lessons.js?v=1.9.5-servo';
+import {renderWiring} from './wiring.js?v=1.9.5-servo';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.5.0-studio1';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.5-servo';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
 import {initHardwareUpload} from './hardware-ui.js?v=1.8.0';
 const $=id=>document.getElementById(id);
@@ -37,6 +37,14 @@ function updateCircuit(){
  const signature=JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
  if(signature!==diagramSignature){renderWiring($('circuit'),diagramProject,lessons[activeMission].title+($('wiringMode').value==='mine'?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
  for(const node of $('circuit').querySelectorAll('[data-led-pin]'))node.setAttribute('fill',sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0');
+ for(const arm of $('circuit').querySelectorAll('[data-servo-arm]')){
+  const angle=sim?.servos[key(project.board,arm.dataset.servoArm)];
+  const label=$('circuit').querySelector('[data-servo-angle="'+arm.dataset.servoArm+'"]');
+  const rotation='rotate('+(-(angle??90))+' 840 '+arm.dataset.pivotY+')';
+  if(arm.getAttribute('transform')!==rotation)arm.setAttribute('transform',rotation);
+  const text=angle===undefined?'—':angle+'°';
+  if(label.textContent!==text)label.textContent=text;
+ }
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
  $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW'))].filter(Boolean).join(' · ');
  $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);

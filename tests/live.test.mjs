@@ -11,8 +11,9 @@ test('live channel handles replies, firmware errors, and disconnection',async()=
  const second=channel.request('DW,13,1');channel.accept('CL:ERR:COMMAND_OR_MODE');await assert.rejects(second,/COMMAND_OR_MODE/);
  await assert.rejects(channel.request('DR,2'),/다시 연결/);
 });
-test('all reference lessons execute against hardware commands, not virtual sensor inputs',async()=>{
+test('live-compatible reference lessons execute against hardware commands, not virtual sensor inputs',async()=>{
  for(const [name,project] of Object.entries(examples)){
+  if(name==='servo'){assert.ok(liveIssues(project).some(issue=>issue.includes('Servo')));continue;}
   const commands=[],logs=[];let runner;
   runner=new LiveRunner({request:async command=>{commands.push(command);if(command==='CL:HELLO')return `CL:LIVE:${LIVE_VERSION}`;if(/^(AR|DR|DT|DH|US),/.test(command))return 'CL:VAL:2:1';return 'CL:OK';},log:line=>logs.push(line)});
   // Execute one setup and loop to avoid waiting for classroom delays.

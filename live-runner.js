@@ -1,7 +1,8 @@
-import {errors,key,walkProject} from './engine.js?v=1.5.0-studio1';
+import {errors,key,walkProject} from './engine.js?v=1.9.5-servo';
 export const LIVE_VERSION='1.1.0';
 export function liveIssues(project){
  const issues=errors(project);
+ if(walkProject(project).some(node=>node.type==='servo'))issues.push('서보모터는 Arduino IDE에서 Servo 라이브러리와 생성된 .ino를 사용해 업로드하세요.');
  if(!project.setup.length&&!project.loop.length)issues.push('실행할 블록이 없습니다.');
  for(const node of walkProject(project))for(const field of ['pin','trig','echo'])if(['0','1'].includes(String(node[field])))issues.push('D0/D1은 USB 통신용입니다. 다른 핀을 사용하세요.');
  return [...new Set(issues)];

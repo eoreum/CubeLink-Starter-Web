@@ -1,4 +1,4 @@
-import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=1.5.0-studio1';
+import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=1.9.5-servo';
 
 export const STORAGE_KEY = 'cubelink-starter-project-v1';
 export function parseProject(text) {

@@ -1,4 +1,4 @@
-import {boards,key,errors,walkProject} from './engine.js?v=1.5.0-studio1';
+import {boards,key,errors,walkProject} from './engine.js?v=1.9.5-servo';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
@@ -9,6 +9,9 @@ export function connectionPlan(project) {
   const outputs=new Set(all.filter(b=>b.type==='write').map(b=>key(project.board,b.pin)));
   for(const b of all) {
     if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
+    if(b.type==='servo')add('servo-'+b.pin,'서보모터 · '+pinName(b.pin),[
+      net(pinName(b.pin),'신호','#8962a3'),net('GND','공통 접지','#405768'),net('외부 V+','서보 정격 전원','#d55959')
+    ],'외부 전원 GND와 Arduino GND를 서보 GND에 함께 연결합니다.','servo');
     if(b.type==='ldr')add('ldr-'+b.pin,'조도 센서 · LDR 분압',[net('5V','10kΩ 고정 저항의 한쪽','#d55959'),net(b.pin,'저항과 LDR의 접점','#27959b'),net('GND','LDR의 다른 쪽','#405768')],'5V — 10kΩ — [접점: '+b.pin+'] — LDR — GND. 이 구성은 어두울수록 ADC가 작아집니다.','ldr');
     if(b.type==='pot')add('pot-'+b.pin,'가변저항',[net('5V','한쪽 끝 단자','#d55959'),net(b.pin,'가운데 단자 (와이퍼)','#27959b'),net('GND','반대쪽 끝 단자','#405768')],'보통 10kΩ 가변저항. 양 끝 방향을 바꾸면 값이 증가하는 방향도 바뀝니다.','pot');
     if(b.type==='analogRead')add('analog-'+b.pin,'아날로그 센서 모듈',[...supply,net(b.pin,'OUT / 신호 (0~5V)','#27959b')],'모듈의 실제 OUT/VCC/GND 표기를 확인하세요. 5V 보드 입력 범위를 넘기지 마세요.','analog');
@@ -54,6 +57,14 @@ function componentPicture(c,y) {
   s+='<rect x="740" y="'+(y+130)+'" width="160" height="110" rx="15" fill="#4b99b6" stroke="#226984" stroke-width="3"/><circle cx="820" cy="'+(y+180)+'" r="59" fill="#d5dadd" stroke="#7a8c98" stroke-width="5"/><circle cx="820" cy="'+(y+180)+'" r="25" fill="#4c5b68"/><path d="M820 '+(y+180)+' L848 '+(y+150)+'" stroke="white" stroke-width="5"/>';
   [765,820,875].forEach((x,i)=>{s+='<path d="M'+x+' '+(y+240)+' V'+(y+290)+'" stroke="#b8a06b" stroke-width="7"/>'+svgText(x-20,y+320,['끝 1','가운데','끝 3'][i],14);});
   targets=[{x:765,y:y+290},{x:820,y:y+290},{x:875,y:y+290}];
+ } else if(c.kind==='servo'){
+  const center=840, axis=y+175;
+  s+='<rect x="720" y="'+(y+120)+'" width="240" height="135" rx="15" fill="#e1d5ee" stroke="#8356a2" stroke-width="3"/>';
+  s+='<circle cx="'+center+'" cy="'+axis+'" r="32" fill="#fff" stroke="#8356a2" stroke-width="4"/>';
+  s+='<path data-servo-arm="'+escapeSvg(c.nets[0].source.replace(/^D/,''))+'" data-pivot-y="'+axis+'" d="M'+center+' '+axis+' h54" fill="none" stroke="#71448e" stroke-width="12" stroke-linecap="round"/>';
+  s+='<text data-servo-angle="'+escapeSvg(c.nets[0].source.replace(/^D/,''))+'" x="810" y="'+(y+237)+'" font-size="22">—</text>';
+  const terminals=['신호','GND','V+'];
+  targets=terminals.map((name,i)=>{const x=760+i*80;s+='<path d="M'+x+' '+(y+255)+' v40" stroke="'+c.nets[i].color+'" stroke-width="6"/>'+svgText(x-19,y+318,name,16);return {x,y:y+295};});
  } else if(c.kind==='ldr') {
   // Complete series path: 5V -> fixed resistor -> A0 junction -> LDR -> GND.
   s+='<path d="M665 '+(y+190)+' H728 M812 '+(y+190)+' H845 M913 '+(y+190)+' H965 V'+(y+295)+' M830 '+(y+190)+' V'+(y+295)+'" fill="none" stroke="#77858c" stroke-width="4"/>';
@@ -78,7 +89,12 @@ export function wiringSvg(project,title='아두이노 연결 그림') {
  for(const [i,c]of items.entries()) {
   const y=85+i*470;
   body+='<rect x="20" y="'+y+'" width="1060" height="450" rx="12" fill="white" stroke="#d4e2e7"/>'+svgText(42,y+35,c.label,23);
-  const b=boardPicture(y,c.nets,plan.board),p=componentPicture(c,y);body+=b.body+p.body;
+  const b=boardPicture(y,c.kind==='servo'?c.nets.slice(0,2):c.nets,plan.board),p=componentPicture(c,y);body+=b.body+p.body;
+  if(c.kind==='servo'){
+   body+='<rect x="40" y="'+(y+318)+'" width="290" height="72" rx="8" fill="#f7eaea" stroke="#d55959"/>'+svgText(55,y+350,'서보 외부 전원',17)+svgText(225,y+350,'V+',16)+svgText(225,y+378,'GND',16);
+   body+='<path d="M330 '+(y+374)+' H350 V'+b.ports[1].y+' H330" fill="none" stroke="#405768" stroke-width="4"/>';
+   b.ports.push({x:330,y:y+344});
+  }
   c.nets.forEach((n,j)=>{const start=b.ports[j],end=p.targets[j],lane=395+j*44,bend=y+350+j*15;
    body+='<path data-wire="'+escapeSvg(n.source)+'" d="M'+start.x+' '+start.y+' H'+lane+' V'+bend+' H'+end.x+' V'+end.y+'" fill="none" stroke="'+n.color+'" stroke-width="4" stroke-linejoin="round"/><circle cx="'+end.x+'" cy="'+end.y+'" r="5" fill="'+n.color+'"/>';
   });

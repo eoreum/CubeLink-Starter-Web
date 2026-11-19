@@ -5,8 +5,8 @@ import {buildProject,detectPlan,emptyDesign,parseSession,replyToIdea,serializeSe
 import {missionOrder} from '../lessons.js';
 import {parseProject,serializeProject} from '../project-store.js';
 
-test('all 18 Studio-style reference answers remain valid and generate Arduino C++',()=>{
- assert.equal(missionOrder.length,18);
+test('all 19 Studio-style reference answers remain valid and generate Arduino C++',()=>{
+ assert.equal(missionOrder.length,19);
  for(const mission of missionOrder){const project={...structuredClone(examples[mission]),mission};assert.deepEqual(errors(project),[],mission);assert.deepEqual(warnings(project),[],mission);const code=generate(project);assert.doesNotMatch(code,/#include\s*<Arduino\.h>/,mission);assert.match(code,/void setup\(\)/,mission);assert.match(code,/void loop\(\)/,mission);}
 });
 
@@ -52,4 +52,18 @@ test('AI plans use the verified mission model and selected board',()=>{
 
 test('conversation and design state survive a safe round trip',()=>{
  const original={messages:[{role:'assistant',text:'안내'},{role:'user',text:'가로등'}],design:{stage:'proposed',idea:'가로등',planId:'streetlight'}};assert.deepEqual(parseSession(serializeSession(original)),original);assert.equal(parseSession('{broken').design.planId,null);
+});
+
+test('servo mission generates Servo library code and simulates commanded angles',()=>{
+ const project=examples.servo;
+ const code=generate(project);
+ assert.ok(code.includes('#include <Servo.h>'));
+ assert.ok(code.includes('clServo_9.attach(9);'));
+ const sim=new Simulation(project);
+ for(const [i,angle] of [0,90,180].entries()){
+  sim.step(project.loop[i*2]);
+  assert.equal(sim.servos['9'],angle);
+  assert.ok(code.includes('clServo_9.write('+angle+');'));
+ }
+ assert.ok(errors({...project,loop:[{type:'servo',pin:'9',angle:181}]}).length);
 });

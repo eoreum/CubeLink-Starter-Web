@@ -1,7 +1,7 @@
 name: Build Windows Desktop
 on:
   push:
-    branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119']
+    branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119', 'fix/starter-1.9.2-install-validation-20261119']
     paths: ['desktop/**', '.github/workflows/windows-desktop.yml']
   workflow_dispatch:
 permissions:
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CubeLink-Starter-Windows-1.9.2
+          name: CubeLink-Starter-Windows-1.9.2-fix-candidate
           path: |
             D:/cubelink-build/CubeLinkStarterSetup-1.9.2-x64.exe
             D:/cubelink-build/SHA256.txt
@@ -74,10 +74,3 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Publish tested desktop installer
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          gh release create desktop-v1.9.2 D:/cubelink-build/CubeLinkStarterSetup-1.9.2-x64.exe D:/cubelink-build/SHA256.txt --target $env:GITHUB_SHA --title "CubeLink Starter Windows 1.9.2 - Free Local AI" --notes-file desktop/RELEASE-NOTES.md --prerelease
-          if($LASTEXITCODE){throw 'Release publication failed'}

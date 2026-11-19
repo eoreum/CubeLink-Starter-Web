@@ -34,15 +34,32 @@ export function detectPlan(text){
  if(has('가변저항','볼륨','potentiometer'))return 'pot';
  if(has('조도','빛 센서','빛센서','ldr'))return 'ldr';
  if(has('깜빡','점멸','blink'))return 'blink';
- if(led)return 'blink';
+ if(led&&has('켜','끄','on','off'))return null;
+ if(led)return null;
  return null;
 }
 export function replyToIdea(text,current=emptyDesign()){
  const idea=String(text).trim().slice(0,500);
  if(!idea)return {design:current,text:'만들고 싶은 것을 한 문장으로 적어 주세요. 예: “어두워지면 LED가 켜지는 가로등”'};
  const detected=detectPlan(idea);
- if(!detected)return {design:{...current,stage:'discover',idea},text:'좋은 출발이에요. Starter 기초 단계에서는 LED, 버튼, 가변저항, 빛·거리·온도·온습도·소리·움직임·기울기 센서 또는 조이스틱 중 무엇을 쓰고 싶은지와 어떤 동작을 원하는지 알려 주세요.'};
+ if(!detected)return {design:{stage:'discover',idea,planId:null},text:'좋은 출발이에요. Starter 기초 단계에서는 LED, 버튼, 가변저항, 빛·거리·온도·온습도·소리·움직임·기울기 센서 또는 조이스틱 중 무엇을 쓰고 싶은지와 어떤 동작을 원하는지 알려 주세요.'};
  const plan=getPlan(detected);
+ // Do not silently replace a new multi-part idea with an unrelated sample lesson.
+ const mentions=[
+  /초음파|거리|hc-sr04|가까|접근|다가오|근접/i,
+  /조도|빛\s*센서|ldr|가로등|어두|밝기/i,
+  /온습도|습도|dht11|dht\s*11/i,
+  /온도|tmp36|lm35/i,
+  /소리|마이크|박수|sound sensor/i,
+  /pir|인체\s*감지|움직임\s*감지/i,
+  /기울기|틸트|tilt/i,
+  /조이스틱|joystick|x축|y축/i,
+  /가변저항|볼륨|potentiometer/i,
+  /버튼|스위치|button/i
+ ];
+ const sensorCount=mentions.filter(pattern=>pattern.test(idea)).length;
+ const customBehavior=/서보|모터|릴레이|부저|소리\s*내|화면|lcd|oled|블루투스|와이파이|wifi|무선|통신|컨베이어|로봇팔|순서대로|동시에|그리고|하면서|후에|다음에/i.test(idea);
+ if(sensorCount>1||customBehavior)return {design:{stage:'discover',idea,planId:null},text:'말씀하신 아이디어는 현재 자동 생성 가능한 단일 기초 예제보다 복잡합니다. 기존 미션을 임의로 열어 새 프로젝트인 것처럼 보여드리지 않겠습니다. 사용하려는 부품과 원하는 동작 순서를 구체적으로 알려 주세요. 현재 버전은 맞춤형 블록 생성까지 지원하지 않으며, 설계 안내만 가능합니다.'};
  return {design:{stage:'proposed',idea,planId:detected},text:`기초 설계로 “${plan.title}” 설계가 잘 맞아요. ${plan.summary}입니다. 아래 부품과 설계를 확인한 뒤 ‘이 설계 적용’을 누르면 블록과 Arduino C++가 함께 만들어집니다.`};
 }
 export function buildProject(planId,board='uno'){

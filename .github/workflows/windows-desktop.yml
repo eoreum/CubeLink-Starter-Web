@@ -1,7 +1,7 @@
 name: Build Windows Desktop
 on:
   push:
-    branches: ['desktop/windows-installer-1.8']
+    branches: ['desktop/windows-installer-1.8', 'release/starter-upgrade-20261119']
     paths: ['desktop/**', '.github/workflows/windows-desktop.yml']
   workflow_dispatch:
 permissions:
@@ -49,7 +49,7 @@ jobs:
           if($LASTEXITCODE){throw 'npm install failed'}
           node desktop/node_modules/electron-builder/cli.js --projectDir desktop --win nsis --x64 --publish never --config.directories.output=D:/cubelink-build
           if($LASTEXITCODE){throw 'Installer build failed'}
-          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.9.1-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
+          Get-FileHash D:/cubelink-build/CubeLinkStarterSetup-1.9.2-x64.exe -Algorithm SHA256 | Format-List | Out-File D:/cubelink-build/SHA256.txt
       - name: Packaged application smoke test
         shell: pwsh
         run: |
@@ -66,9 +66,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CubeLink-Starter-Windows-1.9.1
+          name: CubeLink-Starter-Windows-1.9.2
           path: |
-            D:/cubelink-build/CubeLinkStarterSetup-1.9.1-x64.exe
+            D:/cubelink-build/CubeLinkStarterSetup-1.9.2-x64.exe
             D:/cubelink-build/SHA256.txt
             D:/cubelink-build/smoke.json
           compression-level: 0
@@ -79,5 +79,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release create desktop-v1.9.1 D:/cubelink-build/CubeLinkStarterSetup-1.9.1-x64.exe D:/cubelink-build/SHA256.txt --target $env:GITHUB_SHA --title "CubeLink Starter Windows 1.9.1 - Free Local AI" --notes-file desktop/RELEASE-NOTES.md --prerelease
+          gh release create desktop-v1.9.2 D:/cubelink-build/CubeLinkStarterSetup-1.9.2-x64.exe D:/cubelink-build/SHA256.txt --target $env:GITHUB_SHA --title "CubeLink Starter Windows 1.9.2 - Free Local AI" --notes-file desktop/RELEASE-NOTES.md --prerelease
           if($LASTEXITCODE){throw 'Release publication failed'}

@@ -15,13 +15,13 @@ export class LiveChannel{
    let settled=false;
    const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);this.pending=null;if(error){this.failed=true;reject(error)}else resolve(value)};
    const timer=setTimeout(()=>finish(Error('보드 응답 시간 초과')),4000);
-   this.pending={finish};Promise.resolve().then(()=>this.write(command+'\n')).catch(error=>finish(error));
+   this.pending={finish,expectsValue:/^(AR|DR|DT|DH|US),/.test(command),expectedPin:/^(AR|DR|DT|DH),/.test(command)?command.split(',')[1]:null,expectsVersion:command==='CL:HELLO'};Promise.resolve().then(()=>this.write(command+'\n')).catch(error=>finish(error));
   });
  }
  accept(line){
   if(!this.pending||!line.startsWith('CL:'))return false;
   if(line.startsWith('CL:ERR:'))this.pending.finish(Error(line.slice(7)));
-  else if(line==='CL:OK'||line.startsWith('CL:VAL:')||line.startsWith('CL:LIVE:'))this.pending.finish(null,line);
+  else if(this.pending.expectsVersion?line.startsWith('CL:LIVE:'):this.pending.expectsValue?(line.startsWith('CL:VAL:')&&(!this.pending.expectedPin||line.split(':')[2]===this.pending.expectedPin)):line==='CL:OK')this.pending.finish(null,line);
   else return false;return true;
  }
  close(){this.failed=true;this.pending?.finish(Error('USB 연결 해제'));}

@@ -75,3 +75,17 @@ jobs:
           compression-level: 0
           retention-days: 30
 
+
+      - name: Publish v1.9.3 direct-download installer
+        if: success() && github.ref == 'refs/heads/fix/starter-1.9.2-install-validation-20261119'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag='desktop-v1.9.3'
+          $installer='D:/cubelink-build/CubeLinkStarterSetup-1.9.3-x64.exe'
+          if(-not (Test-Path -LiteralPath $installer)){throw 'Installer missing'}
+          gh release view $tag --repo ${{ github.repository }} *> $null
+          if($LASTEXITCODE -eq 0){throw 'Release tag already exists; refusing to overwrite'}
+          gh release create $tag $installer D:/cubelink-build/SHA256.txt --repo ${{ github.repository }} --target ${{ github.sha }} --title "CubeLink Starter Windows v1.9.3" --notes "Windows x64 offline installer. Automated integration, firmware, and packaged application smoke tests passed. Simulation UI and hardware require classroom verification."
+          if($LASTEXITCODE){throw 'GitHub release publication failed'}

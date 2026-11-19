@@ -1,17 +1,23 @@
 export function initLayout(workspace){
  const $=id=>document.getElementById(id);
  const main=$('appPanels');
- const read=()=>{try{return JSON.parse(localStorage.getItem('cubelink-layout-v2'))||{}}catch{return {}}};
+ const wideScreen=matchMedia('(min-width: 901px)');
+ const storageKey='cubelink-layout-v2';
+ const read=()=>{try{return JSON.parse(localStorage.getItem(storageKey))||{}}catch{return {}}};
  let settings=read();
- const save=()=>{try{localStorage.setItem('cubelink-layout-v2',JSON.stringify(settings))}catch{}};
+ const save=()=>{try{localStorage.setItem(storageKey,JSON.stringify(settings))}catch{}};
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
  function apply(){
   const rect=main.getBoundingClientRect();
-  const code=clamp(settings.code??rect.width*.32,220,Math.max(220,rect.width-360));
-  const bottom=clamp(settings.bottom??rect.height*.34,120,Math.max(120,rect.height-170));
+  const wide=wideScreen.matches;
+  const minWidth=wide?340:220;
+  const maxWidth=Math.max(minWidth,rect.width-(wide?410:360));
+  const maxBottom=Math.max(120,rect.height-(wide?350:170));
+  const code=clamp(settings.code??rect.width*(wide?.38:.32),minWidth,maxWidth);
+  const bottom=clamp(settings.bottom??rect.height*(wide?.27:.34),120,maxBottom);
   main.style.setProperty('--code-w',code+'px');main.style.setProperty('--bottom-size',bottom+'px');
-  $('codeSplitter').setAttribute('aria-valuenow',Math.round(code));$('codeSplitter').setAttribute('aria-valuemin',220);$('codeSplitter').setAttribute('aria-valuemax',Math.max(220,Math.round(rect.width-360)));
-  $('bottomSplitter').setAttribute('aria-valuenow',Math.round(bottom));$('bottomSplitter').setAttribute('aria-valuemin',120);$('bottomSplitter').setAttribute('aria-valuemax',Math.max(120,Math.round(rect.height-170)));
+  $('codeSplitter').setAttribute('aria-valuenow',Math.round(code));$('codeSplitter').setAttribute('aria-valuemin',minWidth);$('codeSplitter').setAttribute('aria-valuemax',Math.round(maxWidth));
+  $('bottomSplitter').setAttribute('aria-valuenow',Math.round(bottom));$('bottomSplitter').setAttribute('aria-valuemin',120);$('bottomSplitter').setAttribute('aria-valuemax',Math.round(maxBottom));
   $('resolution').textContent=`화면 ${screen.width}×${screen.height} · 앱 ${innerWidth}×${innerHeight}`;
   $('resolution').title=`화면은 CSS px 기준, 장치 픽셀 비율 ${devicePixelRatio}. 브라우저 확대/축소와 OS 배율에 따라 물리 해상도와 다릅니다.`;
   Blockly.svgResize(workspace);
@@ -24,7 +30,7 @@ export function initLayout(workspace){
   handle.addEventListener('pointermove',e=>{if(!handle.hasPointerCapture(e.pointerId))return;const r=main.getBoundingClientRect();settings[kind]=kind==='code'?r.right-e.clientX:r.bottom-e.clientY;apply()});
   handle.addEventListener('pointerup',e=>{if(handle.hasPointerCapture(e.pointerId))handle.releasePointerCapture(e.pointerId);handle.classList.remove('dragging');save()});
   handle.addEventListener('lostpointercapture',()=>{handle.classList.remove('dragging');save()});
-  handle.addEventListener('keydown',e=>{const sign=kind==='code'?({ArrowLeft:1,ArrowRight:-1}[e.key]):({ArrowUp:1,ArrowDown:-1}[e.key]);if(sign){e.preventDefault();settings[kind]=(kind==='code'?main.querySelector('.code').offsetWidth:main.querySelector('.simulation').offsetHeight)+sign*20;apply();save()}});
+  handle.addEventListener('keydown',e=>{const sign=kind==='code'?({ArrowLeft:1,ArrowRight:-1}[e.key]):({ArrowUp:1,ArrowDown:-1}[e.key]);if(sign){e.preventDefault();settings[kind]=parseFloat(main.style.getPropertyValue(kind==='code'?'--code-w':'--bottom-size'))+sign*20;apply();save()}});
  }
  $('resetLayout').onclick=()=>{settings={};save();apply();workspace.setScale(.8);syncZoom();workspace.scrollCenter()};
  $('blockZoom').onchange=()=>{workspace.setScale(Number($('blockZoom').value));syncZoom();workspace.scrollCenter()};$('fitBlocks').onclick=fit;

@@ -40,3 +40,18 @@ nav #example{max-width:245px}nav #previousMission,nav #nextMission{padding:6px 8
 
 /* Installer entry shared by existing blog links. */
 body{grid-template-rows:48px 58px 44px 27px minmax(0,1fr) 34px 19px}.desktop-download{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 16px;background:#e1f3ee;border-bottom:1px solid #abd1c7;color:#164f49;min-width:0}.desktop-download strong{display:block;font-size:14px}.desktop-download small{display:block;font-size:10px;line-height:1.5}.desktop-download-button{display:inline-block;flex-shrink:0;text-decoration:none;background:#14796e;color:#fff;padding:9px 16px;border-radius:7px;font-size:13px;font-weight:700}.desktop-download-button:focus-visible{outline:3px solid #f5b52e;outline-offset:2px}nav{overflow-x:auto}nav>div{flex-shrink:0}@media(max-width:650px){body{grid-template-rows:46px 86px 62px 27px minmax(0,1fr) 38px 16px}.desktop-download{flex-wrap:wrap;gap:5px;padding:6px 9px}.desktop-download small{font-size:9px}.desktop-download-button{font-size:12px;padding:6px 10px}}@media(max-height:580px) and (min-width:651px){body{grid-template-rows:40px 52px 36px 23px minmax(0,1fr) 28px 16px}}
+
+/* The classroom circuit sits alongside Blockly on desktop-width web windows. */
+@media(min-width:901px){
+ main#appPanels{grid-template-columns:minmax(0,1fr) var(--code-w,38%);grid-template-rows:minmax(0,1fr) var(--bottom-size,27%)}
+ #appPanels .workspace{grid-area:1 / 1}
+ #appPanels .simulation{grid-area:1 / 2}
+ #appPanels .code{display:flex;grid-area:2 / 1}
+ #appPanels .monitor{grid-area:2 / 2}
+ #appPanels .splitter.vertical{top:0;bottom:0}
+ #appPanels .sim-layout{display:flex;flex-direction:column;gap:6px;overflow:auto}
+ #appPanels .sim-layout>div:first-child{flex:none;overflow:visible}
+ #appPanels .sim-layout #circuit{display:block;width:100%;height:clamp(130px,28vh,290px);min-height:0;max-height:none}
+ #appPanels .sim-options{position:static;flex-wrap:wrap}
+ #appPanels .inputs{flex:1 0 auto;min-width:0;overflow:visible;border-left:0;border-top:1px solid var(--line);padding:6px 0 0}
+}

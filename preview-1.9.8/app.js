@@ -5,7 +5,7 @@ import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from 
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
 import {parseProject,serializeProject} from './project-store.js?v=1.9.6-motor';
 import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
-import {renderWiring} from './wiring.js?v=dual1';
+import {renderWiring} from './wiring.js?v=shared1';
 import {initCircuitView} from './circuit-view.js?v=motor-view';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';

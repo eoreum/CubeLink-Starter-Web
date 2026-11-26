@@ -94,8 +94,48 @@ function componentPicture(c,y) {
  }
  return {body:s+'</g>',targets};
 }
+function sharedDiagram(plan,title){
+ const motors=plan.components.filter(c=>c.kind==='motor');
+ const groups=plan.components.filter(c=>c.kind!=='motor');
+ if(motors.length)groups.push({kind:'driver',label:'L298N · 듀얼 모터 드라이버',nets:[...motors.flatMap(m=>m.nets.slice(0,3)),{source:'GND',terminal:'GND',color:'#405768'},{source:'모터 전원 +',terminal:'Vs',color:'#bd4545'}]});
+ const unique=[...new Map(groups.flatMap(c=>c.nets.map(n=>[n.source,n]))).values()];
+ const external=n=>['외부 V+','모터 전원 +'].includes(n.source);
+ const nets=unique.filter(n=>!external(n)),power=unique.filter(external);
+ const height=Math.max(500,110+groups.length*250,280+nets.length*43+power.length*30);
+ const top=Math.max(0,(height-(240+nets.length*43+power.length*30))/2);
+ const board=boardPicture(top,nets,plan.board);
+ const ports=new Map(nets.map((n,i)=>[n.source,board.ports[i]]));
+ let body='<rect width="1100" height="'+height+'" fill="#f3f8fa"/>'+svgText(20,34,title,22)+svgText(20,60,'보드 1대 · 같은 핀 이름은 같은 전기적 연결입니다.',15)+board.body.replace('height="235"', 'height="'+Math.max(235,75+nets.length*43)+'"');
+ let py=top+Math.max(305,145+nets.length*43)+28;
+ for(const n of power){body+=svgText(45,py,n.source+' (외부 공급)',16);ports.set(n.source,{x:240,y:py-4});py+=28}
+ if(power.length)body+=svgText(45,py,'외부 전원 − → 공통 GND',15);
+ let lines='',devices='';
+ groups.forEach((c,i)=>{
+  const y=90+250*i;
+  devices+=svgText(610,y+17,c.label,19);
+  let targets=[];
+  if(c.kind==='driver'){
+   devices+='<rect data-driver="L298N" x="644" y="'+(y+32)+'" width="170" height="'+(39+c.nets.length*20)+'" rx="10" fill="#92403b"/>'+svgText(695,y+57,'L298N',19,'white');
+   targets=c.nets.map((n,j)=>{const row=y+76+j*20;devices+=svgText(655,row+4,n.terminal,14,'white');return {x:644,y:row}});
+   motors.forEach((m,j)=>{const row=y+83+j*97,en=escapeSvg(m.nets[0].source.slice(1)),b=m.nets[0].terminal==='ENB';
+    devices+='<path d="M814 '+row+' h118 M814 '+(row+9)+' h118" stroke="#56666b" stroke-width="3"/>'+svgText(821,row-8,b?'OUT3 / OUT4':'OUT1 / OUT2',14);
+    devices+='<g transform="translate(954 '+row+')"><circle r="31" fill="#d9e9e8" stroke="#587472"/><g data-rotor="'+en+'"><path d="M0 -25 Q17 -22 3 -3 L0 0 M22 12 Q9 24 2 5 L0 0 M-22 12 Q-24 -3 -6 -1 L0 0" fill="#167d79"/></g></g>'+svgText(998,row+5,b?'모터 2':'모터 1',15)+'<text data-motor-label="'+en+'" x="891" y="'+(row+48)+'" font-size="15">대기 · 0/255</text>';
+   });
+  }else{
+   const pic=componentPicture(c,0);
+   devices+='<g transform="translate(225 '+(y-15)+') scale(.62)">'+pic.body+'</g>';
+   targets=pic.targets.map(t=>({x:225+t.x*.62,y:y-15+t.y*.62}));
+  }
+  c.nets.forEach((n,j)=>{const a=ports.get(n.source),b=targets[j],lane=350+210*unique.findIndex(u=>u.source===n.source)/unique.length,bend=c.kind==='driver'?b.y:y+217+j*5;
+   lines+='<path data-wire="'+escapeSvg(n.source)+'" d="M'+a.x+' '+a.y+' H'+lane+' V'+bend+' H'+b.x+' V'+b.y+'" fill="none" stroke="'+n.color+'" stroke-width="3"/>';
+  });
+ });
+ if(plan.issues.length)devices+=svgText(24,height-8,'⚠ '+plan.issues[0],15,'#a04531');
+ return {body:body+lines+devices,height,plan};
+}
 export function wiringSvg(project,title='아두이노 연결 그림') {
  const plan=connectionPlan(project),items=plan.components,total=Math.max(430,90+items.length*470);
+ if(items.length>1)return sharedDiagram(plan,title);
  let body='<rect width="1100" height="'+total+'" rx="14" fill="#f3f8fa"/>'+svgText(24,32,title,23)+svgText(24,61,'색 선의 양 끝과 핀 이름을 확인하세요. 보드 모델별 실제 핀 위치는 제품 표기를 확인하세요.',15);
  if(!items.length){const b=boardPicture(85,[],plan.board);body+=b.body+'<path d="M24 230 H10 V380 H630" fill="none" stroke="#485d6b" stroke-width="12"/><rect x="630" y="350" width="190" height="80" rx="8" fill="#dbe7ed"/>'+svgText(655,390,'PC · USB',25)+svgText(430,175,'USB 케이블만 연결',28)+svgText(430,220,'외부 부품은 필요 없습니다.',19);}
  for(const [i,c]of items.entries()) {

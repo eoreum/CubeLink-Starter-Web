@@ -9,6 +9,9 @@ export function connectionPlan(project) {
   const outputs=new Set(all.filter(b=>b.type==='write').map(b=>key(project.board,b.pin)));
   for(const b of all) {
     if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
+    if(b.type==='motor')add('motor-'+[b.en,b.in1,b.in2].join('-'),'L298N · DC 모터 · EN '+pinName(b.en),[
+      net(pinName(b.en),'EN (PWM)'),net(pinName(b.in1),'IN1','#27959b'),net(pinName(b.in2),'IN2','#8962a3'),net('GND','공통 GND','#405768')
+    ],'선택한 채널의 EN 점퍼를 분리합니다. 모터 전원은 외부에서 공급하고 Arduino와 GND를 공유합니다.','motor');
     if(b.type==='servo')add('servo-'+b.pin,'서보모터 · '+pinName(b.pin),[
       net(pinName(b.pin),'신호','#8962a3'),net('GND','공통 접지','#405768'),net('외부 V+','서보 정격 전원','#d55959')
     ],'외부 전원 GND와 Arduino GND를 서보 GND에 함께 연결합니다.','servo');
@@ -57,6 +60,10 @@ function componentPicture(c,y) {
   s+='<rect x="740" y="'+(y+130)+'" width="160" height="110" rx="15" fill="#4b99b6" stroke="#226984" stroke-width="3"/><circle cx="820" cy="'+(y+180)+'" r="59" fill="#d5dadd" stroke="#7a8c98" stroke-width="5"/><circle cx="820" cy="'+(y+180)+'" r="25" fill="#4c5b68"/><path d="M820 '+(y+180)+' L848 '+(y+150)+'" stroke="white" stroke-width="5"/>';
   [765,820,875].forEach((x,i)=>{s+='<path d="M'+x+' '+(y+240)+' V'+(y+290)+'" stroke="#b8a06b" stroke-width="7"/>'+svgText(x-20,y+320,['끝 1','가운데','끝 3'][i],14);});
   targets=[{x:765,y:y+290},{x:820,y:y+290},{x:875,y:y+290}];
+ } else if(c.kind==='motor'){
+  s+='<rect x="610" y="'+(y+125)+'" width="245" height="135" rx="12" fill="#92403b"/>'+svgText(675,y+162,'L298N',21,'white')+svgText(630,y+198,'외부 모터 전원 → Vs',16,'white');
+  s+='<path d="M855 '+(y+175)+' h65 M855 '+(y+205)+' h65" stroke="#505661" stroke-width="4"/><circle cx="950" cy="'+(y+190)+'" r="40" fill="#dde5e7" stroke="#52676d" stroke-width="4"/>'+svgText(936,y+198,'M',23);
+  targets=c.nets.map((n,i)=>{const x=630+i*61;s+=svgText(x-14,y+282,['EN','IN1','IN2','GND'][i],14);return {x,y:y+260}});
  } else if(c.kind==='servo'){
   const center=840, axis=y+175;
   s+='<rect x="720" y="'+(y+120)+'" width="240" height="135" rx="15" fill="#e1d5ee" stroke="#8356a2" stroke-width="3"/>';

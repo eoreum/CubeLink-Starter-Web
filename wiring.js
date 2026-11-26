@@ -1,4 +1,4 @@
-import {boards,key,errors,walkProject} from './engine.js?v=1.9.5-servo';
+import {boards,key,errors,walkProject} from './engine.js?v=1.9.6-motor';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {

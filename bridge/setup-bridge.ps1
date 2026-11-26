@@ -70,6 +70,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'DHT sensor library 설치에 실패했습니다.' }
   & $cli lib install 'Adafruit Unified Sensor'
   if ($LASTEXITCODE -ne 0) { throw 'Adafruit Unified Sensor 설치에 실패했습니다.' }
+  & $cli lib install 'Servo'
+  if ($LASTEXITCODE -ne 0) { throw 'Servo library installation failed.' }
   Write-Host ''
   # Stop only an older bridge launched from this installation before restarting.
   $serverPath = Join-Path $bridgeRoot 'server.mjs'

@@ -1,4 +1,4 @@
-import {expression,pins,statement} from './engine.js?v=1.9.5-servo';
+import {expression,pins,pwmPins,statement} from './engine.js?v=1.9.6-motor';
 
 const compareFromBlockly={EQ:'==',NEQ:'!=',LT:'<',LTE:'<=',GT:'>',GTE:'>='};
 const compareToBlockly=Object.fromEntries(Object.entries(compareFromBlockly).map(([key,value])=>[value,key]));
@@ -14,6 +14,11 @@ export function registerBlocks(B,getBoard){
  B.Blocks.starter_servo={init(){
   this.appendDummyInput().appendField('서보 신호 핀').appendField(pinField(false),'pin').appendField('각도').appendField(new B.FieldNumber(90,0,180,1),'angle').appendField('°');
   this.setFieldValue('9','pin');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#8356a2');
+ }};
+ B.Blocks.starter_motor={init(){
+  this.appendDummyInput().appendField('DC 모터 L298N · EN').appendField(new B.FieldDropdown(()=>pwmPins(getBoard()).map(p=>[p,p])),'en').appendField('IN1').appendField(pinField(),'in1').appendField('IN2').appendField(pinField(),'in2');
+  this.appendDummyInput().appendField(new B.FieldDropdown([['정회전','forward'],['역회전','reverse'],['정지','stop']]),'direction').appendField('속도 (0~255)').appendField(new B.FieldNumber(150,0,255,1),'speed');
+  this.setFieldValue('5','en');this.setFieldValue('7','in1');this.setFieldValue('8','in2');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#098b88');
  }};
  B.Blocks.starter_delay={init(){this.appendDummyInput().appendField(new B.FieldNumber(500,0,60000,1),'ms').appendField('ms 기다리기');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#D4AF37');}};
  B.Blocks.starter_if_else={init(){this.appendValueInput('CONDITION').setCheck('Boolean').appendField('만약');this.appendStatementInput('THEN').appendField('이라면');this.appendStatementInput('ELSE').appendField('아니면');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#5C81A6');}};
@@ -51,6 +56,7 @@ function readStatement(block){
  if(type==='print_value')return statement('printValue',{value:readExpression(block.getInputTargetBlock('VALUE'))});
  if(type==='mode')return statement('mode',{pin:block.getFieldValue('pin'),mode:block.getFieldValue('mode')});
  if(type==='write')return statement('write',{pin:block.getFieldValue('pin'),state:block.getFieldValue('state')});
+ if(type==='motor')return statement('motor',{en:block.getFieldValue('en'),in1:block.getFieldValue('in1'),in2:block.getFieldValue('in2'),direction:block.getFieldValue('direction'),speed:Number(block.getFieldValue('speed'))});
  if(type==='servo')return statement('servo',{pin:block.getFieldValue('pin'),angle:Number(block.getFieldValue('angle'))});
  if(type==='delay')return statement('delay',{ms:Number(block.getFieldValue('ms'))});
  if(type==='if_else')return statement('if',{condition:readExpression(block.getInputTargetBlock('CONDITION')),then:readChain(block.getInputTargetBlock('THEN')),else:readChain(block.getInputTargetBlock('ELSE'))});
@@ -83,6 +89,7 @@ function buildStatement(B,workspace,node){
  else if(node.type==='printValue'){block=init(workspace.newBlock('starter_print_value'));connectValue(B,block,'VALUE',buildExpression(B,workspace,node.value));}
  else if(node.type==='mode'){block=init(workspace.newBlock('starter_mode'));setDropdown(block,'pin',node.pin);block.setFieldValue(node.mode,'mode');}
  else if(node.type==='write'){block=init(workspace.newBlock('starter_write'));setDropdown(block,'pin',node.pin);block.setFieldValue(node.state,'state');}
+ else if(node.type==='motor'){block=init(workspace.newBlock('starter_motor'));for(const f of ['en','in1','in2','direction','speed'])setDropdown(block,f,node[f]);}
  else if(node.type==='servo'){block=init(workspace.newBlock('starter_servo'));setDropdown(block,'pin',node.pin);block.setFieldValue(String(node.angle),'angle');}
  else if(node.type==='delay'){block=init(workspace.newBlock('starter_delay'));block.setFieldValue(String(node.ms),'ms');}
  else if(node.type==='if'){block=init(workspace.newBlock('starter_if_else'));connectValue(B,block,'CONDITION',buildExpression(B,workspace,node.condition));connectChain(B,workspace,block.getInput('THEN').connection,node.then);connectChain(B,workspace,block.getInput('ELSE').connection,node.else);}
@@ -101,6 +108,7 @@ export function toolbox(){return {kind:'categoryToolbox',contents:[
  {kind:'category',name:'변수',colour:'#A65C81',custom:'VARIABLE'},
  {kind:'category',name:'시리얼 통신',colour:'#27AE60',contents:[{kind:'block',type:'starter_serial_begin'},{kind:'block',type:'starter_print_text'},{kind:'block',type:'starter_print_value'}]},
  {kind:'category',name:'LED · 디지털',colour:'#E74C3C',contents:[{kind:'block',type:'starter_mode'},{kind:'block',type:'starter_write'},{kind:'block',type:'starter_digitalRead'},{kind:'block',type:'starter_button'}]},
+ {kind:'category',name:'DC 모터 (L298N)',colour:'#098b88',contents:[{kind:'block',type:'starter_motor'}]},
  {kind:'category',name:'서보모터',colour:'#8356a2',contents:[{kind:'block',type:'starter_servo'}]},
  {kind:'category',name:'센서 · 아날로그',colour:'#F39C12',contents:['analogRead','pot','ldr','temperature','dhtTemperature','dhtHumidity','sound','pir','tilt','joystickAxis','ultrasonic','map'].map(type=>({kind:'block',type:'starter_'+type}))}
  ]}}

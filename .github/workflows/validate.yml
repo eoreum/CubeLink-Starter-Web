@@ -27,5 +27,5 @@ jobs:
       - run: |
           arduino-cli core update-index
           arduino-cli core install arduino:avr
-          arduino-cli lib install "DHT sensor library" "Adafruit Unified Sensor"
+          arduino-cli lib install "DHT sensor library" "Adafruit Unified Sensor" "Servo"
       - run: arduino-cli compile --fqbn '${{ matrix.fqbn }}' bridge/firmware/CubeLinkStarterLive

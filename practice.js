@@ -1,4 +1,4 @@
-import {boards,examples} from './engine.js?v=1.9.5-servo';
+import {boards,examples} from './engine.js?v=1.9.6-motor';
 
 // Student drafts never share storage with the earlier answer-filled demo.
 export const PRACTICE_KEY='cubelink-starter-practice-v1';

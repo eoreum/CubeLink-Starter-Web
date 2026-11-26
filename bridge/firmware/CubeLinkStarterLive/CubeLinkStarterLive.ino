@@ -1,12 +1,16 @@
 #include <Arduino.h>
 #include <DHT.h>
-const char LIVE_VERSION[] = "1.1.0";
+#include <Servo.h>
+const char LIVE_VERSION[] = "1.2.0";
 char buffer[80]; byte used=0; bool overflow=false;
 byte modes[NUM_DIGITAL_PINS];
+bool motorEnable[NUM_DIGITAL_PINS]={false};
+Servo servos[6];
+int servoPins[6]={-1,-1,-1,-1,-1,-1};
 DHT* sensors[NUM_DIGITAL_PINS]={0};
 unsigned long lastCommand=0;
 bool validPin(int p){return p>=2 && p<NUM_DIGITAL_PINS;}
-void resetPins(){for(int p=2;p<NUM_DIGITAL_PINS;p++){digitalWrite(p,LOW);pinMode(p,INPUT);modes[p]=INPUT;}}
+void resetPins(){for(int p=2;p<NUM_DIGITAL_PINS;p++)if(motorEnable[p]){analogWrite(p,0);motorEnable[p]=false;}for(byte i=0;i<6;i++){servos[i].detach();servoPins[i]=-1;}for(int p=2;p<NUM_DIGITAL_PINS;p++){digitalWrite(p,LOW);pinMode(p,INPUT);modes[p]=INPUT;}}
 void error(const char* text){Serial.print("CL:ERR:");Serial.println(text);}
 void value(int p,float v){if(isnan(v)){error("SENSOR");return;}Serial.print("CL:VAL:");Serial.print(p);Serial.print(':');Serial.println(v,4);}
 bool integer(const char* text,int &result){if(!text||!*text)return false;char* end;long n=strtol(text,&end,10);if(*end||n<0||n>255)return false;result=(int)n;return true;}
@@ -19,7 +23,20 @@ void execute(){
  // Nano A6/A7 are ADC-only and lie above NUM_DIGITAL_PINS.
  if(!strcmp(op,"AR")&&p>=A0&&p<A0+NUM_ANALOG_INPUTS){value(p,analogRead(p));return;}
  if(!validPin(p)){error("PIN");return;}
- if(!strcmp(op,"PM")&&b){
+ if(!strcmp(op,"MT")){
+  int in1,in2,dir,speed;
+  if(!digitalPinHasPWM(p)||!integer(b,in1)||!integer(strtok(NULL,","),in2)||!integer(strtok(NULL,","),dir)||!integer(strtok(NULL,","),speed)||!validPin(in1)||!validPin(in2)||p==in1||p==in2||in1==in2||dir>2){error("MOTOR");return;}
+  motorEnable[p]=true;digitalWrite(p,LOW);pinMode(p,OUTPUT);analogWrite(p,0);
+  digitalWrite(in1,LOW);pinMode(in1,OUTPUT);digitalWrite(in2,LOW);pinMode(in2,OUTPUT);
+  if(dir&&speed){delay(20);digitalWrite(in1,dir==1?HIGH:LOW);digitalWrite(in2,dir==2?HIGH:LOW);analogWrite(p,speed);}
+  Serial.println("CL:OK");
+ }else if(!strcmp(op,"SV")&&integer(b,v)&&v<=180){
+  int slot=-1;for(byte i=0;i<6;i++)if(servoPins[i]==p){slot=i;break;}
+  if(slot<0){for(byte i=0;i<6;i++)if(servoPins[i]<0){slot=i;break;}}
+  if(slot<0){error("SERVO_LIMIT");return;}
+  if(servoPins[slot]<0){servos[slot].write(v);servos[slot].attach(p);servoPins[slot]=p;}
+  servos[slot].write(v);Serial.println("CL:OK");
+ }else if(!strcmp(op,"PM")&&b){
   byte m;if(!strcmp(b,"OUT"))m=OUTPUT;else if(!strcmp(b,"IN"))m=INPUT;else if(!strcmp(b,"PULLUP"))m=INPUT_PULLUP;else{error("MODE");return;}
   pinMode(p,m);modes[p]=m;Serial.println("CL:OK");
  }else if(!strcmp(op,"DW")&&integer(b,v)&&v<=1&&modes[p]==OUTPUT){digitalWrite(p,v?HIGH:LOW);Serial.println("CL:OK");

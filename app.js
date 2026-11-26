@@ -1,12 +1,12 @@
-import {LiveChannel,LiveRunner} from './live-runner.js?v=1.9.5-servo';
-import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.9.5-servo';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.9.5-servo';
+import {LiveChannel,LiveRunner} from './live-runner.js?v=1.9.6-motor';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.9.6-motor';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.9.6-motor';
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
-import {parseProject,serializeProject} from './project-store.js?v=1.9.5-servo';
-import {lessons,missionOrder} from './lessons.js?v=1.9.5-servo';
-import {renderWiring} from './wiring.js?v=1.9.5-servo';
+import {parseProject,serializeProject} from './project-store.js?v=1.9.6-motor';
+import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
+import {renderWiring} from './wiring.js?v=1.9.6-motor';
 import {initCircuitView} from './circuit-view.js?v=1.5.0';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.5-servo';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
 import {initHardwareUpload} from './hardware-ui.js?v=1.8.0';
 const $=id=>document.getElementById(id);
@@ -46,7 +46,7 @@ function updateCircuit(){
   if(label.textContent!==text)label.textContent=text;
  }
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
- $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW'))].filter(Boolean).join(' · ');
+ $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW')),...Object.entries(sim?.motors||{}).map(([en,m])=>'DC EN'+en+' '+({forward:'정회전',reverse:'역회전',stop:'정지'}[m.direction])+' '+m.speed+'/255')].filter(Boolean).join(' · ');
  $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);
 }
 function appendLog(source,line){logs[source].push(line);if(logs[source].length>300)logs[source].splice(0,logs[source].length-300);if($('monitorSource').value===source)showLogs()}

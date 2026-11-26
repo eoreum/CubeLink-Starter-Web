@@ -67,3 +67,13 @@ test('servo mission generates Servo library code and simulates commanded angles'
  }
  assert.ok(errors({...project,loop:[{type:'servo',pin:'9',angle:181}]}).length);
 });
+
+test('L298N generates driver code, simulation states and validates PWM',()=>{
+ const motor={type:'motor',en:'5',in1:'7',in2:'8',direction:'forward',speed:150};
+ const p={board:'uno',setup:[],loop:[motor]};
+ assert.deepEqual(errors(p),[]);assert.match(generate(p),/clMotor\(5, 7, 8, 1, 150\)/);
+ const sim=new Simulation(p);sim.step(motor);assert.deepEqual(sim.motors['5'],{direction:'forward',speed:150});
+ sim.step({...motor,direction:'stop'});assert.equal(sim.motors['5'].speed,0);
+ assert.ok(errors({...p,loop:[{...motor,en:'4'}]}).length);
+ assert.ok(errors({...p,loop:[{...motor,in2:'7'}]}).length);
+});

@@ -5,8 +5,23 @@ export function initCircuitView() {
   const zoomLabel=document.getElementById('circuitZoomLabel');
   const hint=document.getElementById('circuitViewHint');
   let zoom=1,opener=null;
+  const byId=id=>document.getElementById(id);
+  function controls(){
+    byId('zoomRun').disabled=byId('run').disabled;
+    byId('zoomStop').disabled=byId('stop').disabled;
+    byId('zoomStatus').textContent=byId('simStatus').textContent;
+  }
+  for(const [target,sourceId] of [['zoomRun','run'],['zoomStop','stop']]){
+    byId(target).onclick=()=>byId(sourceId).click();
+    new MutationObserver(controls).observe(byId(sourceId),{attributes:true,attributeFilter:['disabled']});
+  }
+  new MutationObserver(controls).observe(byId('simStatus'),{childList:true,characterData:true,subtree:true});
+  let previous='';
   function sync() {
     if (!dialog.open) return;
+    const signature=zoom+'|'+source.outerHTML;
+    if(previous===signature && viewport.firstChild)return;
+    previous=signature;
     const svg=source.cloneNode(true);
     svg.removeAttribute('id');svg.removeAttribute('tabindex');
     svg.setAttribute('role','img');svg.setAttribute('aria-label',source.getAttribute('aria-label')||'확대된 미션 연결도');
@@ -21,7 +36,7 @@ export function initCircuitView() {
     viewport.replaceChildren(svg);
   }
   function setZoom(value){zoom=Math.max(1,Math.min(3,value));zoomLabel.textContent=Math.round(zoom*100)+'%';sync();}
-  function open(event){opener=event?.currentTarget||document.activeElement;setZoom(1);hint.textContent='';dialog.showModal();sync();document.getElementById('closeCircuit').focus();}
+  function open(event){opener=event?.currentTarget||document.activeElement;setZoom(1);hint.textContent='';dialog.showModal();controls();sync();document.getElementById('closeCircuit').focus();}
   source.setAttribute('role','button');source.setAttribute('tabindex','0');source.setAttribute('aria-label','회로 그림 크게 보기');
   source.addEventListener('click',open);
   source.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open(e);}});

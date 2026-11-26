@@ -5,8 +5,8 @@ import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from 
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
 import {parseProject,serializeProject} from './project-store.js?v=1.9.6-motor';
 import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
-import {renderWiring} from './wiring.js?v=link2';
-import {initCircuitView} from './circuit-view.js?v=1.5.0';
+import {renderWiring} from './wiring.js?v=motor-view';
+import {initCircuitView} from './circuit-view.js?v=motor-view';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
 import {initHardwareUpload} from './hardware-ui.js?v=1.8.0';
@@ -47,13 +47,21 @@ function updateCircuit(){
   if(label.textContent!==text)label.textContent=text;
  }
  const pin=$('watchPin').value||'13',state=sim?.outputs[key(project.board,pin)];
+ for(const rotor of $('circuit').querySelectorAll('[data-rotor]')){
+  const en=rotor.dataset.rotor,m=sim?.motors?.[en],moving=Boolean(m?.speed && m.direction!=='stop');
+  const animation=moving?'clMotorSpin '+(1.8-1.5*m.speed/255).toFixed(2)+'s linear infinite '+(m.direction==='reverse'?'reverse':'normal'):'none';
+  if(rotor.dataset.motion!==animation){rotor.style.animation=animation;rotor.dataset.motion=animation}
+  const label=$('circuit').querySelector('[data-motor-label="'+en+'"]');
+  const value=(moving?(m.direction==='reverse'?'역회전':'정회전'):(running?'정지':$('stop').disabled&&$('simStatus').textContent.includes('정지')?'정지':'대기'))+' · '+(moving?m.speed:0)+'/255';
+  if(label.textContent!==value)label.textContent=value;
+ }
  $('deviceReadout').textContent=[state===undefined?'':('LED '+pin+': '+(state?'HIGH':'LOW')),...Object.entries(sim?.motors||{}).map(([en,m])=>'DC EN'+en+' '+({forward:'정회전',reverse:'역회전',stop:'정지'}[m.direction])+' '+m.speed+'/255')].filter(Boolean).join(' · ');
  $('simClock').textContent=((sim?.time||0)/1000).toFixed(2)+' s';$('value').textContent='최근 값 = '+(sim?.value||0).toFixed(2);
 }
 function appendLog(source,line){logs[source].push(line);if(logs[source].length>300)logs[source].splice(0,logs[source].length-300);if($('monitorSource').value===source)showLogs()}
 function showLogs(){$('serialLog').textContent=logs[$('monitorSource').value].join('\n');$('serialLog').scrollTop=$('serialLog').scrollHeight}
 function tick(){if(!running)return;const list=sim.project[phase];if(index>=list.length){phase='loop';index=0;timer=setTimeout(tick,16);return}workspace.highlightBlock(connectedIds(workspace,phase)[index]||null);const before=sim.logs.length;const result=sim.step(list[index++]);if(result.error){appendLog('sim','⚠ '+result.error);$('simStatus').textContent='● 실행 중 · 출력 차단'}else $('simStatus').textContent='● 실행 중';sim.logs.slice(before).forEach(s=>appendLog('sim',s));sim.logs.length=0;sim.faults.length=0;updateCircuit();timer=setTimeout(tick,result.wait)}
-$('run').onclick=()=>{if(errors(project).length||project.setup.length+project.loop.length===0)return;stop();sim=new Simulation(project,inputs);running=true;phase='setup';index=0;$('run').disabled=true;$('stop').disabled=false;appendLog('sim','── 새 실행 · setup → loop ──');tick()};$('stop').onclick=stop;$('watchPin').onchange=updateCircuit;$('board').onchange=()=>{stop();project.board=$('board').value;loadEditor();refreshParts();render();autosave()};$('loadExample').onclick=()=>$('resetMissionDialog').showModal();
+$('run').onclick=()=>{if(errors(project).length||project.setup.length+project.loop.length===0)return;if(walkProject(project).some(n=>n.type==='motor'))$('wiringMode').value='mine';stop();sim=new Simulation(project,inputs);running=true;phase='setup';index=0;$('run').disabled=true;$('stop').disabled=false;appendLog('sim','── 새 실행 · setup → loop ──');tick()};$('stop').onclick=stop;$('watchPin').onchange=updateCircuit;$('board').onchange=()=>{stop();project.board=$('board').value;loadEditor();refreshParts();render();autosave()};$('loadExample').onclick=()=>$('resetMissionDialog').showModal();
 function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type})),a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('download').onclick=()=>{if(errors(project).length)return;download('CubeLinkStarter.ino',generate(project),'text/plain;charset=utf-8')};$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(generate(project));toast('Arduino 코드를 복사했습니다')}catch{toast('복사 권한이 없습니다. .ino 저장을 사용하세요.')}};$('save').onclick=()=>download('CubeLinkStarter.json',serializeProject(project),'application/json');$('open').onclick=()=>$('file').click();$('file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>200000)throw Error('파일이 너무 큽니다');const p=parseProject(await file.text());autosave();stop();project=p;activeMission=p.mission||activeMission;project.mission=activeMission;loadEditor();render();showLesson();autosave();toast('프로젝트를 불러왔습니다')}catch(err){toast('불러오기 실패: '+err.message)}e.target.value=''};
 $('help').onclick=()=>{showLesson();$('helpDialog').showModal()};$('example').onchange=()=>switchMission($('example').value);

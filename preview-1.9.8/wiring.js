@@ -63,6 +63,9 @@ function componentPicture(c,y) {
  } else if(c.kind==='motor'){
   s+='<rect x="610" y="'+(y+125)+'" width="245" height="135" rx="12" fill="#92403b"/>'+svgText(675,y+162,'L298N',21,'white')+svgText(630,y+198,'외부 모터 전원 → Vs',16,'white');
   s+='<path d="M855 '+(y+175)+' h65 M855 '+(y+205)+' h65" stroke="#505661" stroke-width="4"/><circle cx="950" cy="'+(y+190)+'" r="40" fill="#dde5e7" stroke="#52676d" stroke-width="4"/>'+svgText(936,y+198,'M',23);
+  const en=escapeSvg(c.nets[0].source.replace(/^D/,''));
+  s+='<g transform="translate(950 '+(y+190)+')"><g data-rotor="'+en+'"><circle r="31" fill="#d7e9e9"/><path d="M0 -26 Q15 -20 5 -4 L0 0 M23 13 Q10 24 2 6 L0 0 M-23 13 Q-25 -3 -7 -2 L0 0" fill="#167d79" stroke="#165b5b" stroke-width="3"/></g></g>';
+  s+='<text data-motor-label="'+en+'" x="856" y="'+(y+260)+'" font-size="17">대기 · 0/255</text>';
   targets=c.nets.map((n,i)=>{const x=630+i*61;s+=svgText(x-14,y+282,['EN','IN1','IN2','GND'][i],14);return {x,y:y+260}});
  } else if(c.kind==='servo'){
   const center=840, axis=y+175;

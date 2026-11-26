@@ -57,3 +57,5 @@ body{grid-template-rows:48px 58px 44px 27px minmax(0,1fr) 34px 19px}.desktop-dow
 }
 
 #missionMode[aria-pressed="true"],#freeMode[aria-pressed="true"]{background:#087e80;color:white;border-color:#087e80} [hidden]{display:none!important}
+
+@keyframes clMotorSpin {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}

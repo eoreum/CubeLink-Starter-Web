@@ -1,4 +1,4 @@
-import {initParts} from './parts.js?v=link2';
+import {initParts} from './parts.js?v=link3';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=1.9.6-motor';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=1.9.6-motor';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=1.9.6-motor';

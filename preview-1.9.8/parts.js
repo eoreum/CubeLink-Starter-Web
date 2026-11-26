@@ -35,9 +35,24 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
   if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw Error('공개 제품 페이지 URL을 입력하세요.');
   return u.href;
  }
+ let productInfo='';
+ $('sourceUrl').oninput=()=>{productInfo='';$('partDraft').value='';$('draftStatus').textContent=''};
+ $('fetchPart').onclick=async()=>{const button=$('fetchPart');button.disabled=true;
+  try{
+   const url=sourceUrl();
+   const response=await fetch(url,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(8000)});
+   if(!response.ok||!response.headers.get('content-type')?.includes('text/html'))throw Error();
+   const reader=response.body.getReader(),decoder=new TextDecoder();let html='',bytes=0;
+   while(bytes<350000){const {value,done}=await reader.read();if(done)break;bytes+=value.length;html+=decoder.decode(value,{stream:true});}
+   await reader.cancel();if(sourceUrl()!==url)return;
+   const title=(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/\s+/g,' ').trim().slice(0,200);
+   if(!title)throw Error();
+   productInfo=title;$('draftStatus').textContent='제품 페이지 제목: '+title+' · 분석 요청에 포함합니다.';
+  }catch{$('draftStatus').textContent='이 페이지는 브라우저에서 정보를 읽을 수 없습니다. 분석 요청을 복사해 사용하는 AI에서 링크를 여세요.'}finally{button.disabled=false}
+ };
  $('copyPartPrompt').onclick=async()=>{try{
   const url=sourceUrl();
-  await navigator.clipboard.writeText('다음 판매 페이지 또는 데이터시트를 직접 열어 모델명, 핀, 전원, 통신 방식을 확인하세요. 확인되지 않은 사양은 추정하지 마세요. '+url+' 지원 유형 '+JSON.stringify(Object.fromEntries(Object.entries(types).map(([k,v])=>[k,v.label])))+' 중 전기적 인터페이스와 코드가 호환될 때만 type을 지정하세요. 이외에는 unsupported로 답하세요. 결과는 코드 펜스 없이 JSON {"name":"모델명","type":"유형","source":"위 URL","spec":"핀·전원·통신 및 검증 근거"} 형태로 주세요.');
+  await navigator.clipboard.writeText('다음 판매 페이지 또는 데이터시트를 직접 열어 모델명, 핀, 전원, 통신 방식을 확인하세요. 확인되지 않은 사양은 추정하지 마세요. '+url+' 페이지 제목 '+productInfo+' 지원 유형 '+JSON.stringify(Object.fromEntries(Object.entries(types).map(([k,v])=>[k,v.label])))+' 중 전기적 인터페이스와 코드가 호환될 때만 type을 지정하세요. 이외에는 unsupported로 답하세요. 결과는 코드 펜스 없이 JSON {"name":"모델명","type":"유형","source":"위 URL","spec":"핀·전원·통신 및 검증 근거"} 형태로 주세요.');
   $('draftStatus').textContent='분석 요청을 복사했습니다.';
  }catch(e){$('draftStatus').textContent=e.message}};
  $('reviewPart').onclick=()=>{try{

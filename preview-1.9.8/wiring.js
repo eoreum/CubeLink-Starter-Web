@@ -1,4 +1,4 @@
-import {boards,key,errors,walkProject} from './engine.js?v=1.9.6-motor';
+import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=dual1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
@@ -7,10 +7,12 @@ export function connectionPlan(project) {
   const net=(source,terminal,color='#c28a2d')=>({source,terminal,color});
   const supply=[net('5V','VCC / +','#d55959'),net('GND','GND / −','#405768')];
   const outputs=new Set(all.filter(b=>b.type==='write').map(b=>key(project.board,b.pin)));
+  const channels=motorChannels(project);
   for(const b of all) {
+    const second=b.type==='motor'&&channels.get([b.en,b.in1,b.in2].join('/'))==='B';
     if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
-    if(b.type==='motor')add('motor-'+[b.en,b.in1,b.in2].join('-'),'L298N · DC 모터 · EN '+pinName(b.en),[
-      net(pinName(b.en),'EN (PWM)'),net(pinName(b.in1),'IN1','#27959b'),net(pinName(b.in2),'IN2','#8962a3'),net('GND','공통 GND','#405768')
+    if(b.type==='motor')add('motor-'+[b.en,b.in1,b.in2].join('-'),'L298N · DC 모터 '+(second?'2 (B) · OUT3/OUT4':'1 (A) · OUT1/OUT2')+' · '+pinName(b.en),[
+      net(pinName(b.en),second?'ENB':'ENA'),net(pinName(b.in1),second?'IN3':'IN1','#27959b'),net(pinName(b.in2),second?'IN4':'IN2','#8962a3'),net('GND','공통 GND','#405768')
     ],'선택한 채널의 EN 점퍼를 분리합니다. 모터 전원은 외부에서 공급하고 Arduino와 GND를 공유합니다.','motor');
     if(b.type==='servo')add('servo-'+b.pin,'서보모터 · '+pinName(b.pin),[
       net(pinName(b.pin),'신호','#8962a3'),net('GND','공통 접지','#405768'),net('외부 V+','서보 정격 전원','#d55959')
@@ -66,7 +68,7 @@ function componentPicture(c,y) {
   const en=escapeSvg(c.nets[0].source.replace(/^D/,''));
   s+='<g transform="translate(950 '+(y+190)+')"><g data-rotor="'+en+'"><circle r="31" fill="#d7e9e9"/><path d="M0 -26 Q15 -20 5 -4 L0 0 M23 13 Q10 24 2 6 L0 0 M-23 13 Q-25 -3 -7 -2 L0 0" fill="#167d79" stroke="#165b5b" stroke-width="3"/></g></g>';
   s+='<text data-motor-label="'+en+'" x="856" y="'+(y+260)+'" font-size="17">대기 · 0/255</text>';
-  targets=c.nets.map((n,i)=>{const x=630+i*61;s+=svgText(x-14,y+282,['EN','IN1','IN2','GND'][i],14);return {x,y:y+260}});
+  targets=c.nets.map((n,i)=>{const x=630+i*61;s+=svgText(x-14,y+282,i===3?'GND':n.terminal,14);return {x,y:y+260}});
  } else if(c.kind==='servo'){
   const center=840, axis=y+175;
   s+='<rect x="720" y="'+(y+120)+'" width="240" height="135" rx="15" fill="#e1d5ee" stroke="#8356a2" stroke-width="3"/>';

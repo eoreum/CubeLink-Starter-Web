@@ -1,5 +1,5 @@
 import {terminalNames,drawRegistered} from './part-schema.js';
-import {pins,pwmPins,key,walkProject} from './engine.js?v=1.9.6-motor';
+import {pins,pwmPins,key,walkProject} from './engine.js?v=dual1';
 export const types={
  custom:{label:'신규 모델 · 단자도 등록 (드라이버 검증 대기)',roles:[]},
  led:{label:'LED / 디지털 출력',roles:[['pin','digital']],block:'starter_write',setup:true},
@@ -12,6 +12,7 @@ export const types={
 };
 const available=(board,kind)=>kind==='analog'?pins(board,true):kind==='pwm'?pwmPins(board):pins(board).filter(p=>!p.startsWith('A')&&!['0','1'].includes(p));
 export function allocate(board,type,parts,project){
+ if(type==='motor'&&parts.filter(p=>p.type==='motor').length>=2)throw Error('L298N 모터 1·2가 모두 등록되었습니다.');
  const used=new Set();
  for(const p of parts)for(const v of Object.values(p.fields))used.add(key(board,v));
  for(const n of walkProject(project))for(const role of ['pin','en','in1','in2','trig','echo'])if(n[role]!==undefined)used.add(key(board,n[role]));
@@ -23,7 +24,7 @@ export function validateParts(board,parts){
  const used=new Set(),servo=parts.some(p=>p.type==='servo');
  for(const p of parts){if(!Object.hasOwn(types,p.type))throw Error('지원하지 않는 부품');for(const [r,k] of types[p.type].roles){const v=p.fields[r],canonical=key(board,v);if(!available(board,k).includes(v)||used.has(canonical))throw Error('핀 충돌 또는 지원하지 않는 핀: '+v);if(servo&&k==='pwm'&&(board==='mega'?['44','45','46']:['9','10']).includes(v))throw Error('Servo 타이머와 PWM 충돌: '+v);used.add(canonical);}}
 }
-export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).map(p=>{const t=types[p.type],contents=[{kind:'block',type:t.block,fields:p.fields}];if(p.type==='dht')contents.push({kind:'block',type:'starter_dhtHumidity',fields:p.fields});if(t.setup||t.input)contents.unshift({kind:'block',type:'starter_mode',fields:{pin:p.fields.pin,mode:t.input?'INPUT_PULLUP':'OUTPUT'}});return {kind:'category',name:p.name,colour:'#087e80',contents};});}
+export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).map(p=>{const t=types[p.type],contents=[{kind:'block',type:t.block,fields:p.type==='motor'?{channel:parts.filter(x=>x.type==='motor').indexOf(p)===0?'A':'B',...p.fields}:p.fields}];if(p.type==='dht')contents.push({kind:'block',type:'starter_dhtHumidity',fields:p.fields});if(t.setup||t.input)contents.unshift({kind:'block',type:'starter_mode',fields:{pin:p.fields.pin,mode:t.input?'INPUT_PULLUP':'OUTPUT'}});return {kind:'category',name:p.name,colour:'#087e80',contents};});}
 export function initParts({getProject,getWorkspace,baseToolbox}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}

@@ -1,4 +1,4 @@
-import {expression,pins,pwmPins,statement} from './engine.js?v=1.9.6-motor';
+import {motorChannels,walkProject,expression,pins,pwmPins,statement} from './engine.js?v=dual1';
 
 const compareFromBlockly={EQ:'==',NEQ:'!=',LT:'<',LTE:'<=',GT:'>',GTE:'>='};
 const compareToBlockly=Object.fromEntries(Object.entries(compareFromBlockly).map(([key,value])=>[value,key]));
@@ -16,7 +16,11 @@ export function registerBlocks(B,getBoard){
   this.setFieldValue('9','pin');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#8356a2');
  }};
  B.Blocks.starter_motor={init(){
-  this.appendDummyInput().appendField('DC 모터 L298N · EN').appendField(new B.FieldDropdown(()=>pwmPins(getBoard()).map(p=>[p,p])),'en').appendField('IN1').appendField(pinField(),'in1').appendField('IN2').appendField(pinField(),'in2');
+  const choose=new B.FieldDropdown([['모터 1 · A','A'],['모터 2 · B','B']],value=>{
+   if(this.getField('en')){const defaults=value==='A'?['5','7','8']:['6','4','12'];['en','in1','in2'].forEach((f,i)=>this.setFieldValue(defaults[i],f));}
+   return value;
+  });
+  this.appendDummyInput().appendField('L298N').appendField(choose,'channel').appendField('EN').appendField(new B.FieldDropdown(()=>pwmPins(getBoard()).map(p=>[p,p])),'en').appendField('방향핀 1').appendField(pinField(),'in1').appendField('방향핀 2').appendField(pinField(),'in2');
   this.appendDummyInput().appendField(new B.FieldDropdown([['정회전','forward'],['역회전','reverse'],['정지','stop']]),'direction').appendField('속도 (0~255)').appendField(new B.FieldNumber(150,0,255,1),'speed');
   this.setFieldValue('5','en');this.setFieldValue('7','in1');this.setFieldValue('8','in2');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#098b88');
  }};
@@ -56,7 +60,7 @@ function readStatement(block){
  if(type==='print_value')return statement('printValue',{value:readExpression(block.getInputTargetBlock('VALUE'))});
  if(type==='mode')return statement('mode',{pin:block.getFieldValue('pin'),mode:block.getFieldValue('mode')});
  if(type==='write')return statement('write',{pin:block.getFieldValue('pin'),state:block.getFieldValue('state')});
- if(type==='motor')return statement('motor',{en:block.getFieldValue('en'),in1:block.getFieldValue('in1'),in2:block.getFieldValue('in2'),direction:block.getFieldValue('direction'),speed:Number(block.getFieldValue('speed'))});
+ if(type==='motor')return statement('motor',{channel:block.getFieldValue('channel'),en:block.getFieldValue('en'),in1:block.getFieldValue('in1'),in2:block.getFieldValue('in2'),direction:block.getFieldValue('direction'),speed:Number(block.getFieldValue('speed'))});
  if(type==='servo')return statement('servo',{pin:block.getFieldValue('pin'),angle:Number(block.getFieldValue('angle'))});
  if(type==='delay')return statement('delay',{ms:Number(block.getFieldValue('ms'))});
  if(type==='if_else')return statement('if',{condition:readExpression(block.getInputTargetBlock('CONDITION')),then:readChain(block.getInputTargetBlock('THEN')),else:readChain(block.getInputTargetBlock('ELSE'))});
@@ -89,7 +93,7 @@ function buildStatement(B,workspace,node){
  else if(node.type==='printValue'){block=init(workspace.newBlock('starter_print_value'));connectValue(B,block,'VALUE',buildExpression(B,workspace,node.value));}
  else if(node.type==='mode'){block=init(workspace.newBlock('starter_mode'));setDropdown(block,'pin',node.pin);block.setFieldValue(node.mode,'mode');}
  else if(node.type==='write'){block=init(workspace.newBlock('starter_write'));setDropdown(block,'pin',node.pin);block.setFieldValue(node.state,'state');}
- else if(node.type==='motor'){block=init(workspace.newBlock('starter_motor'));for(const f of ['en','in1','in2','direction','speed'])setDropdown(block,f,node[f]);}
+ else if(node.type==='motor'){block=init(workspace.newBlock('starter_motor'));block.setFieldValue(node.channel||'A','channel');for(const f of ['en','in1','in2','direction','speed'])setDropdown(block,f,node[f]);}
  else if(node.type==='servo'){block=init(workspace.newBlock('starter_servo'));setDropdown(block,'pin',node.pin);block.setFieldValue(String(node.angle),'angle');}
  else if(node.type==='delay'){block=init(workspace.newBlock('starter_delay'));block.setFieldValue(String(node.ms),'ms');}
  else if(node.type==='if'){block=init(workspace.newBlock('starter_if_else'));connectValue(B,block,'CONDITION',buildExpression(B,workspace,node.condition));connectChain(B,workspace,block.getInput('THEN').connection,node.then);connectChain(B,workspace,block.getInput('ELSE').connection,node.else);}
@@ -97,6 +101,9 @@ function buildStatement(B,workspace,node){
  block.render?.();return block;
 }
 export function fromModel(B,workspace,project){
+ project=structuredClone(project);
+ const channels=motorChannels(project);
+ for(const n of walkProject(project))if(n.type==='motor'&&!n.channel)n.channel=channels.get([n.en,n.in1,n.in2].join('/'));
  workspace.clear();for(const item of [...workspace.getAllVariables()])try{workspace.deleteVariableById(item.getId())}catch{}
  const root=init(workspace.newBlock('starter_root'));root.render?.();root.moveBy(24,24);connectChain(B,workspace,root.getInput('SETUP').connection,project.setup);connectChain(B,workspace,root.getInput('LOOP').connection,project.loop);return root;
 }

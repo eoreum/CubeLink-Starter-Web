@@ -1,4 +1,4 @@
-import {errors,key,walkProject} from './engine.js?v=1.9.6-motor';
+import {errors,key,walkProject} from './engine.js?v=dual1';
 export const LIVE_VERSION='1.2.0';
 export function liveIssues(project){
  const issues=errors(project);

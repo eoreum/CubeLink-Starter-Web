@@ -33,6 +33,16 @@ export function blockCount(project){return walkProject(project).length}
 function validPin(project,pin,analog=false){return typeof pin==='string'&&pins(project.board,analog).includes(pin)}
 const analogTypes=new Set(['analogRead','ldr','pot','temperature','sound','joystickAxis']);
 const digitalTypes=new Set(['digitalRead','button','dhtTemperature','dhtHumidity','pir','tilt']);
+export function motorChannels(project){
+ const motors=walkProject(project).filter(n=>n.type==='motor');
+ const pins=n=>[n.en,n.in1,n.in2].join('/');
+ const channels=new Map(motors.filter(n=>n.channel).map(n=>[pins(n),n.channel]));
+ for(const n of motors)if(!channels.has(pins(n))){
+   const available=['A','B'].find(ch=>![...channels.values()].includes(ch));
+   channels.set(pins(n),available||'?');
+ }
+ return channels;
+}
 export function errors(project){
  const out=[];if(!project||!Object.hasOwn(boards,project.board))return ['지원하지 않는 보드'];if(!Array.isArray(project.setup)||!Array.isArray(project.loop))return ['setup/loop 형식이 올바르지 않습니다'];
  const visit=(node,path,depth=0)=>{if(depth>20){out.push(path+': 블록 연결이 너무 깊습니다');return;}if(!node||typeof node!=='object'||typeof node.type!=='string'){out.push(path+': 블록 형식이 올바르지 않습니다');return;}if(!statementTypes.has(node.type)&&!expressionTypes.has(node.type)){out.push(path+': 알 수 없는 블록');return;}
@@ -50,7 +60,14 @@ export function errors(project){
   if(node.type==='if'){visit(node.condition,path+' 조건',depth+1);if(!Array.isArray(node.then)||!Array.isArray(node.else)){out.push(path+': 조건 실행 블록 형식이 올바르지 않습니다');return;}node.then.forEach((child,i)=>visit(child,`${path} 참 ${i+1}`,depth+1));node.else.forEach((child,i)=>visit(child,`${path} 거짓 ${i+1}`,depth+1));return;}for(const field of ['value','left','right','a','b'])if(node[field]&&typeof node[field]==='object')visit(node[field],path+' '+field,depth+1);
  };
  for(const section of ['setup','loop'])project[section].forEach((node,i)=>visit(node,`${section} ${i+1}`));const nodes=walkProject(project),motors=nodes.filter(n=>n.type==='motor'),servos=nodes.filter(n=>n.type==='servo');
+ const channels=motorChannels(project);
+ if(channels.size>2)out.push('L298N 한 대에는 모터를 두 개까지 연결할 수 있습니다.');
+ const bindings=new Map();
  for(const m of motors){
+  const signature=[m.en,m.in1,m.in2].join('/');
+  const channel=m.channel??channels.get(signature);
+  if(!['A','B'].includes(channel)||channels.get(signature)!==channel||(bindings.has(channel)&&bindings.get(channel)!==signature))out.push('모터 번호별 핀을 통일하고 A와 B에 서로 다른 핀을 지정하세요.');
+  bindings.set(channel,signature);
   if(servos.length&&(project.board==='mega'?['44','45','46']:['9','10']).includes(m.en))out.push('Servo 라이브러리와 모터 PWM 타이머가 충돌합니다. 다른 EN 핀을 사용하세요.');
   for(const n of nodes){if(n.type==='motor'){if([n.en,n.in1,n.in2].some(p=>[m.en,m.in1,m.in2].includes(p))&&!(n.en===m.en&&n.in1===m.in1&&n.in2===m.in2))out.push('DC 모터 채널 핀 충돌');}else if(['pin','trig','echo'].some(f=>n[f]!==undefined&&[m.en,m.in1,m.in2].includes(n[f])))out.push('DC 모터와 다른 블록의 핀 충돌');}
  }

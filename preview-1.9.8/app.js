@@ -9,7 +9,7 @@ import {connectionPlan,renderWiring} from './wiring.js?v=module-map1';
 import {initCircuitView} from './circuit-view.js?v=motor-view';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
-import {initHardwareUpload} from './hardware-ui.js?v=1.8.0';
+import {initHardwareUpload} from './hardware-ui.js?v=library-131';
 const $=id=>document.getElementById(id);
 let activeMission='ledOn',diagramSignature='',completed=new Set();
 let project=blankProject('ledOn'),sim=null,running=false,timer,phase='setup',index=0,port=null,reader=null,writer=null,connecting=false,closing=false;

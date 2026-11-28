@@ -24,8 +24,8 @@ async function request(path,body,token){
 const encode=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
 export function initResearch(register,typeFor){
  const $=id=>document.getElementById(id),query=$('catalogQuery'),model=$('researchModel'),find=$('researchFind'),status=$('researchStatus'),box=$('researchResults'),disconnect=$('researchDisconnect');
- const saved=localStorage.getItem(modelKey);
- if([...model.options].some(o=>o.value===saved))model.value=saved;
+ // Free lookup is the default on every visit; paid AI requires explicit selection.
+ model.value='free';
  let token='',generation=0;
  function reset(){generation++;box.replaceChildren();status.textContent=''}
  query.addEventListener('input',reset);
@@ -48,6 +48,16 @@ export function initResearch(register,typeFor){
   if(!name){query.focus();status.textContent='제품명을 입력하세요.';return}
   reset();const seq=generation;find.disabled=true;
   try{
+   if(model.value==='free'){
+    status.textContent='무료 검색 · 아래 등록 목록에서 부품을 선택하거나 공개 자료에서 정확한 모델과 사양을 확인하세요. 외부 검색 결과는 자동 등록되지 않습니다.';
+    for(const [label,term] of [['제품 및 데이터시트 검색',name+' datasheet pinout'],['국내 제품 검색',name+' 부품 모듈 핀맵']]){
+     const link=document.createElement('a');
+     link.href='https://www.google.com/search?'+new URLSearchParams({q:term});
+     link.target='_blank';link.rel='noopener noreferrer';link.textContent=label;
+     const row=document.createElement('p');row.append(link);box.append(row);
+    }
+    return;
+   }
    if(!token){
     const verifier=encode(crypto.getRandomValues(new Uint8Array(32)));
     const challenge=encode(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));

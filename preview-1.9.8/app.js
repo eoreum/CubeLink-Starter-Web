@@ -1,13 +1,13 @@
-import {initParts} from './parts.js?v=module-map1';
-import {LiveChannel,LiveRunner} from './live-runner.js?v=dual1';
-import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=tb-driver1';
-import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=tb-driver1';
+import {initParts} from './parts.js?v=ds18-1';
+import {LiveChannel,LiveRunner} from './live-runner.js?v=ds18-1';
+import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=ds18-1';
+import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=ds18-1';
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
-import {parseProject,serializeProject} from './project-store.js?v=tb-driver1';
+import {parseProject,serializeProject} from './project-store.js?v=ds18-1';
 import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
-import {connectionPlan,renderWiring} from './wiring.js?v=module-map1';
+import {connectionPlan,renderWiring} from './wiring.js?v=ds18-1';
 import {initCircuitView} from './circuit-view.js?v=motor-view';
-import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
+import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=ds18-1';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
 import {initHardwareUpload} from './hardware-ui.js?v=library-131';
 const $=id=>document.getElementById(id);
@@ -30,9 +30,9 @@ function renderInputs(){const host=$('inputs');host.replaceChildren();const titl
 function slider(label,value,min,max,change){const row=el('div','input-row'),l=el('label','',label),out=el('output','',value),input=el('input');input.type='range';input.min=min;input.max=max;input.step=1;input.value=value;input.setAttribute('aria-label',label);l.append(out);row.append(l,input);input.oninput=()=>{out.textContent=input.value;change(Number(input.value));updateCircuit()};host.append(row)}
 analog.forEach(pin=>{inputs.analog[pin]??=512;slider(pin+(' · 센서 입력 (ADC)'),inputs.analog[pin],0,1023,v=>inputs.analog[pin]=v)});
 digital.forEach(pin=>{const row=el('div','input-row'),label=el('label','',pin+' · 디지털 / 버튼'),s=optionSelect(['auto','0','1'],String(inputs.digital[pin]??'auto'));s.options[0].textContent='미연결 (풀업 / 기본값)';s.options[1].textContent='GND · 누름 (0)';s.options[2].textContent='5V · HIGH (1)';s.setAttribute('aria-label',pin+' 버튼 입력');s.onchange=()=>{if(s.value==='auto')delete inputs.digital[pin];else inputs.digital[pin]=Number(s.value)};row.append(label,s);host.append(row)});
-if(all.some(b=>['temperature','dhtTemperature'].includes(b.type)))slider('온도 (°C)',inputs.temperature,-20,80,v=>inputs.temperature=v);
+if(all.some(b=>['temperature','dhtTemperature','ds18Temperature'].includes(b.type)))slider('온도 (°C)',inputs.temperature,-20,80,v=>inputs.temperature=v);
 if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100,v=>inputs.humidity=v);
-if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
+if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity','ds18Temperature'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
 function updateCircuit(){
  const diagramProject=activeMission==='free'||$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
  const registered=activeMission==='free'?(refreshParts.getRegistered?.()||[]):[];

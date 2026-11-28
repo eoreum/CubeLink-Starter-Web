@@ -2,13 +2,14 @@ import {moduleTypes,validateModuleMap} from './module-pinmap.js';
 import {matchDocumented} from './part-catalog.js?v=1';
 import {initResearch} from './part-research.js?v=readme-evidence1';
 import {terminalNames,drawRegistered} from './part-schema.js';
-import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
+import {pins,pwmPins,key,walkProject} from './engine.js?v=ds18-1';
 export const types={
  tb6612:{label:'TB6612FNG 듀얼 모터 드라이버',roles:[]},
  custom:{label:'신규 모델 · 단자도 등록 (드라이버 검증 대기)',roles:[]},
  led:{label:'LED / 디지털 출력',roles:[['pin','digital']],block:'starter_write',setup:true},
  button:{label:'버튼 / 디지털 입력',roles:[['pin','digital']],block:'starter_button',input:true},
  analog:{label:'아날로그 센서 / 가변저항',roles:[['pin','analog']],block:'starter_analogRead'},
+ ds18:{label:'DS18B20 온도센서 (외부 전원 3선)',roles:[['pin','digital']],block:'starter_ds18Temperature',library:'OneWire + DallasTemperature'},
  dht:{label:'DHT11 온습도 센서',roles:[['pin','digital']],block:'starter_dhtTemperature',library:'DHT sensor library'},
  servo:{library:'Servo',label:'서보모터',roles:[['pin','digital']],block:'starter_servo'},
  motor:{label:'L298N DC 모터 채널',roles:[['en','pwm'],['in1','digital'],['in2','digital']],block:'starter_motor'},
@@ -136,7 +137,7 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
  }catch(e){$('partStatus').textContent=e.message}};
  const catalog=[
   {name:'TB6612FNG',type:'tb6612',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
-  ...Object.entries(types).filter(([type])=>!['custom','tb6612'].includes(type)).map(([type,t])=>({name:t.label,type,aliases:({led:'발광 다이오드 light emitting diode',button:'스위치 택트 푸시버튼 push button',analog:'아날로그 센서 출력 AO',pot:'B10K 10K potentiometer 포텐셔미터 가변 저항',ldr:'LDR CDS 조도 광저항',pir:'HC-SR501 HCSR501 인체 감지 PIR',tilt:'기울기 경사 스위치 tilt',sound:'KY-038 KY-037 소리 음향 센서',temperature:'TMP36 온도 temperature',dht:'DHT11 온습도 temperature humidity',servo:'SG90 MG90S 서보 servo',motor:'L298N L298 DC모터 모터드라이버 motor driver',ultrasonic:'HC-SR04 HCSR04 초음파 거리센서 ultrasonic'})[type]||''}))
+  ...Object.entries(types).filter(([type])=>!['custom','tb6612'].includes(type)).map(([type,t])=>({name:t.label,type,aliases:({led:'발광 다이오드 light emitting diode',button:'스위치 택트 푸시버튼 push button',analog:'아날로그 센서 출력 AO',pot:'B10K 10K potentiometer 포텐셔미터 가변 저항',ldr:'LDR CDS 조도 광저항',pir:'HC-SR501 HCSR501 인체 감지 PIR',tilt:'기울기 경사 스위치 tilt',sound:'KY-038 KY-037 소리 음향 센서',temperature:'TMP36 온도 temperature',ds18:'DS18B20 DS18B20 1-Wire 방수 온도센서',dht:'DHT11 온습도 temperature humidity',servo:'SG90 MG90S 서보 servo',motor:'L298N L298 DC모터 모터드라이버 motor driver',ultrasonic:'HC-SR04 HCSR04 초음파 거리센서 ultrasonic'})[type]||''}))
  ];
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
  function showMatches(){

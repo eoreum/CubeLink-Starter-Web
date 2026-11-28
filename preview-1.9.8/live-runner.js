@@ -1,7 +1,8 @@
-import {errors,key,walkProject} from './engine.js?v=dual1';
+import {errors,key,walkProject} from './engine.js?v=ds18-1';
 export const LIVE_VERSION='1.2.0';
 export function liveIssues(project){
  const issues=errors(project);
+ if(walkProject(project).some(n=>n.type==='ds18Temperature'))issues.push('DS18B20은 현재 시뮬레이션 및 코드 업로드를 지원합니다. 실시간 USB 실행은 전용 펌웨어 검증 후 지원합니다.');
  if(!project.setup.length&&!project.loop.length)issues.push('실행할 블록이 없습니다.');
  for(const node of walkProject(project))for(const field of ['pin','trig','echo'])if(['0','1'].includes(String(node[field])))issues.push('D0/D1은 USB 통신용입니다. 다른 핀을 사용하세요.');
  return [...new Set(issues)];

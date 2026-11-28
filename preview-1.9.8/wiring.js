@@ -1,11 +1,11 @@
 import {validateModuleMap} from './module-pinmap.js';
-import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=tb-driver1';
+import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=ds18-1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 // Attach a registered model name only when its supported electrical profile
 // and allocated pin(s) match a connected block. Never infer wiring from a name.
 export function connectedPart(project,node,registered=[]){
- const compatible={analogRead:'analog',pot:'pot',ldr:'ldr',sound:'sound',temperature:'temperature',pir:'pir',tilt:'tilt',dhtTemperature:'dht',dhtHumidity:'dht',servo:'servo',ultrasonic:'ultrasonic',button:'button',write:'led',motor:'motor'};
+ const compatible={analogRead:'analog',pot:'pot',ldr:'ldr',sound:'sound',temperature:'temperature',pir:'pir',tilt:'tilt',ds18Temperature:'ds18',dhtTemperature:'dht',dhtHumidity:'dht',servo:'servo',ultrasonic:'ultrasonic',button:'button',write:'led',motor:'motor'};
  const type=compatible[node.type];
  if(!type||node.driver==='TB6612FNG')return '';
  const roles=type==='ultrasonic'?['trig','echo']:type==='motor'?['en','in1','in2']:['pin'];
@@ -41,6 +41,7 @@ export function connectionPlan(project,registered=[]) {
     if(b.type==='ultrasonic')add('sonar-'+b.trig+'-'+b.echo,'HC-SR04 초음파 센서',[...supply,net(pinName(b.trig),'TRIG (출력)','#c28a2d'),net(pinName(b.echo),'ECHO (입력)','#27959b')],'센서에 인쇄된 VCC / TRIG / ECHO / GND를 기준으로 연결하세요. 무응답은 -1cm입니다.','sonar');
     if(b.type==='temperature')add('temperature-'+b.pin,'TMP36 온도 센서',[...supply,net(b.pin,'VOUT / 온도 신호','#27959b')],'평평한 면을 바라볼 때 핀 순서를 반드시 부품 데이터시트와 대조하세요.','analog');
     if(['dhtTemperature','dhtHumidity'].includes(b.type))add('dht-'+b.pin,'DHT11 온습도 센서',[...supply,net(pinName(b.pin),'DATA','#27959b')],'모듈형이 아닌 센서는 DATA와 VCC 사이에 풀업 저항이 필요할 수 있습니다.','analog');
+    if(b.type==='ds18Temperature')add('ds18-'+key(project.board,b.pin),'DS18B20 온도센서',[...supply,net(pinName(b.pin),'DQ 데이터','#27959b')],'외부 전원 3선 방식. DQ와 VCC 사이에 4.7kΩ 풀업 저항을 연결하세요. 실제 단자 순서와 방수형 선 색상은 제품 자료와 대조하세요.','ds18');
     if(b.type==='sound')add('sound-'+b.pin,'소리 센서 모듈',[...supply,net(b.pin,'AO / 소리 크기','#27959b')],'AO 아날로그 출력을 사용합니다. 모듈의 전압 범위를 확인하세요.','analog');
     if(b.type==='pir')add('pir-'+b.pin,'PIR 인체감지 센서',[...supply,net(pinName(b.pin),'OUT','#27959b')],'전원을 넣은 뒤 센서 안정화 시간이 필요합니다.','analog');
     if(b.type==='tilt')add('tilt-'+b.pin,'기울기 스위치',[net(pinName(b.pin),'신호 단자','#27959b'),net('GND','반대 단자','#405768')],'INPUT_PULLUP을 사용하면 기울기 상태에 따라 0/1이 바뀝니다.','button');
@@ -78,6 +79,11 @@ function componentPicture(c,y) {
   s+=svgText(790,y+237,'HC-SR04',17,'white');
   const tx=[720,780,840,900];['VCC','TRIG','ECHO','GND'].forEach((n,i)=>{s+='<path d="M'+tx[i]+' '+(y+250)+' V'+(y+293)+'" stroke="#b89a54" stroke-width="6"/>'+svgText(tx[i]-20,y+320,n,14);});
   targets=[{x:720,y:y+293},{x:900,y:y+293},{x:780,y:y+293},{x:840,y:y+293}];
+ } else if(c.kind==='ds18') {
+  s+='<rect x="700" y="'+(y+110)+'" width="250" height="150" rx="10" fill="#428a6b"/>'+svgText(725,y+145,'DS18B20 · 개념 단자도',18,'white');
+  targets=[{x:735,y:y+260},{x:820,y:y+260},{x:905,y:y+260}];
+  ['VCC','GND','DQ'].forEach((n,i)=>{s+=svgText(targets[i].x-15,y+245,n,16,'white');s+='<circle cx="'+targets[i].x+'" cy="'+targets[i].y+'" r="6" fill="'+c.nets[i].color+'"/>'});
+  s+='<path d="M735 '+(y+260)+' V'+(y+300)+' H778 M862 '+(y+300)+' H905 V'+(y+260)+'" fill="none" stroke="#777" stroke-width="4"/>'+resistor(820,y+300,false,'4.7kΩ');
  } else if(c.kind==='mapped-module') {
   s+='<rect x="690" y="'+(y+110)+'" width="300" height="210" rx="10" fill="#428a6b"/>'+svgText(720,y+140,'등록 모듈 · 개념 단자도',19,'white');
   targets=c.nets.map((n,i)=>{const py=y+180+i*50;s+='<circle cx="690" cy="'+py+'" r="6" fill="'+n.color+'"/>'+svgText(710,py+5,n.terminal,17,'white');return {x:690,y:py}});

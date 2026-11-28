@@ -70,6 +70,40 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
   $('aiMakerDialog').close();$('freeMode').click();refresh();draftUrl=url;$('sourceNote').textContent=d.spec+' · '+url;$('partName').value=d.name;$('partType').value=d.type;$('partDialog').showModal();
  }catch(e){$('draftStatus').textContent=e.message}};
  $('partOpen').onclick=()=>{refresh();$('partDialog').showModal()};$('partClose').onclick=()=>$('partDialog').close();
- $('partAdd').onclick=()=>{try{const board=getProject().board,parts=list(),type=$('partType').value,name=$('partName').value.trim();if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source:draftUrl,spec:draftSpec,terminals:draftPins,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();$('partStatus').textContent=(type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.');$('partName').value=''}catch(e){$('partStatus').textContent=e.message}};
+
+ function register(name,type,source,spec,terminals){
+  const board=getProject().board,parts=list();
+  if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source,spec,terminals,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
+ }
+ $('partAdd').onclick=()=>{try{
+  $('partStatus').textContent=register($('partName').value.trim(),$('partType').value,draftUrl,draftSpec,draftPins);
+  $('partName').value='';
+ }catch(e){$('partStatus').textContent=e.message}};
+ const catalog=[
+  {name:'TB6612FNG',type:'custom',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
+  ...Object.entries(types).filter(([type])=>type!=='custom').map(([type,t])=>({name:t.label,type}))
+ ];
+ const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
+ function showMatches(){
+  const query=normalize($('catalogQuery').value);
+  const matches=catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query));
+  const box=$('catalogResults');
+  box.replaceChildren();
+  $('catalogStatus').textContent=matches.length?'':'검색 결과가 없습니다. 아래 제품 링크 분석을 이용하세요.';
+  for(const p of matches){
+   const button=document.createElement('button');
+   button.type='button';
+   button.textContent=p.name+' 추가 · '+(p.type==='custom'?'단자도만 지원':'블록 지원');
+   button.onclick=()=>{
+    if(getProject().mission!=='free')$('freeMode').click();
+    try{
+     $('catalogStatus').textContent=register(p.name,p.type,p.source||'',p.spec||'',p.terminals||[]);
+    }catch(e){$('catalogStatus').textContent=e.message}
+   };
+   box.append(button);
+  }
+ }
+ $('catalogQuery').oninput=showMatches;
+ showMatches();
  return refresh;
 }

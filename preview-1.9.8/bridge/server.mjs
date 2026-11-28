@@ -43,7 +43,7 @@ async function probeFirmware(port){
  const result=await run('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',probeScript,'-Port',port],12000);
  try{return JSON.parse(result.stdout.trim())}catch{throw Error('라이브 펌웨어 확인 응답을 해석하지 못했습니다.')}
 }
-const LIBRARIES=Object.freeze({'Servo.h':'Servo','DHT.h':'DHT sensor library','Adafruit_Sensor.h':'Adafruit Unified Sensor','LiquidCrystal_I2C.h':'LiquidCrystal I2C','Stepper.h':'Stepper','AccelStepper.h':'AccelStepper'});
+const LIBRARIES=Object.freeze({'Servo.h':'Servo','DHT.h':'DHT sensor library','Adafruit_Sensor.h':'Adafruit Unified Sensor','LiquidCrystal_I2C.h':'LiquidCrystal I2C','Stepper.h':'Stepper','AccelStepper.h':'AccelStepper','Adafruit_NeoPixel.h':'Adafruit NeoPixel','OneWire.h':'OneWire','DallasTemperature.h':'DallasTemperature','Adafruit_BME280.h':'Adafruit BME280 Library','Adafruit_I2CDevice.h':'Adafruit BusIO','Adafruit_SPIDevice.h':'Adafruit BusIO'});
 export function requiredLibraries(source){
  const names=new Set();
  for(const match of source.matchAll(/^\s*#\s*include\s*[<"]([^>"]+)[>"]/gm)){
@@ -51,16 +51,17 @@ export function requiredLibraries(source){
  }
  return [...names];
 }
-async function prepareLibraries(source,cliRunner){
- const names=requiredLibraries(source);if(!names.length)return;
+export async function prepareLibraries(source,cliRunner){
+ const names=requiredLibraries(source);if(names.includes('DHT sensor library')&&!names.includes('Adafruit Unified Sensor'))names.push('Adafruit Unified Sensor');if(!names.length)return {required:[],installed:[]};
  let installed=[];
  try{const result=await cliRunner(['lib','list','--format','json'],30000);installed=(JSON.parse(result.stdout).installed_libraries||[]).map(item=>item.library?.name);}catch{}
  const missing=names.filter(name=>!installed.includes(name));
  if(missing.length){await cliRunner(['lib','update-index'],120000);await cliRunner(['lib','install',...missing],240000);}
+ return {required:names,installed:missing};
 }
 async function compileJob(job,upload=false,cliRunner=cli){
  const root=await mkdtemp(path.join(os.tmpdir(),'cubelink-starter-')),sketch=path.join(root,'CubeLinkStarter'),build=path.join(root,'build');
- try{await prepareLibraries(job.source,cliRunner);await mkdir(sketch);await mkdir(build);await writeFile(path.join(sketch,'CubeLinkStarter.ino'),job.source,'utf8');const compiled=await cliRunner(['compile','--fqbn',job.fqbn,'--warnings','default','--build-path',build,sketch],240000);let output=(compiled.stdout+compiled.stderr).trim();if(upload){const uploaded=await cliRunner(['upload','--fqbn',job.fqbn,'--port',job.port,'--verify','--build-path',build,sketch],120000);output+='\n'+(uploaded.stdout+uploaded.stderr).trim()}return output.slice(-60000)}finally{await rm(root,{recursive:true,force:true})}
+ try{const libraries=await prepareLibraries(job.source,cliRunner);await mkdir(sketch);await mkdir(build);await writeFile(path.join(sketch,'CubeLinkStarter.ino'),job.source,'utf8');const compiled=await cliRunner(['compile','--fqbn',job.fqbn,'--warnings','default','--build-path',build,sketch],240000);let output=(libraries.required.length?'필요 라이브러리: '+libraries.required.join(', ')+'\n이번 자동 설치: '+(libraries.installed.join(', ')||'없음 (기존 사용)')+'\n':'')+(compiled.stdout+compiled.stderr).trim();if(upload){const uploaded=await cliRunner(['upload','--fqbn',job.fqbn,'--port',job.port,'--verify','--build-path',build,sketch],120000);output+='\n'+(uploaded.stdout+uploaded.stderr).trim()}return output.slice(-60000)}finally{await rm(root,{recursive:true,force:true})}
 }
 export async function ensureLiveFirmware(target,cliRunner=cli,probeRunner=probeFirmware){
  const before=await probeRunner(target.port);
@@ -73,7 +74,7 @@ function send(res,status,data,origin=''){const headers={'Content-Type':'applicat
 function sendPreflight(req,res,origin){const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-CubeLink-Token','Access-Control-Max-Age':'600','Vary':'Origin'};if(req.headers['access-control-request-private-network']==='true')headers['Access-Control-Allow-Private-Network']='true';res.writeHead(204,headers);res.end()}
 function readBody(req){return new Promise((resolve,reject)=>{const chunks=[];let size=0;req.on('data',chunk=>{size+=chunk.length;if(size>220000){reject(Error('요청이 너무 큽니다.'));req.destroy();return}chunks.push(chunk)});req.on('end',()=>{try{resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))}catch{reject(Error('JSON 요청 형식이 올바르지 않습니다.'))}});req.on('error',reject)})}
 export function createBridgeServer({sessionToken=randomBytes(24).toString('hex'),cliRunner=cli,probeRunner=probeFirmware}={}){let busy=false;return http.createServer(async(req,res)=>{const origin=req.headers.origin||'';if(!isAllowedOrigin(origin)){send(res,403,{error:'허용되지 않은 웹사이트입니다.'});return}if(req.method==='OPTIONS'){sendPreflight(req,res,origin);return}try{
-   if(req.method==='GET'&&req.url==='/health'){let cliVersion='설치되지 않음',available=false;try{const result=await cliRunner(['version'],10000);cliVersion=(result.stdout||result.stderr).trim().split(/\r?\n/)[0];available=true}catch{}send(res,200,{ok:true,bridgeVersion:'1.3.0',cliAvailable:available,cliVersion,busy},origin);return}
+   if(req.method==='GET'&&req.url==='/health'){let cliVersion='설치되지 않음',available=false;try{const result=await cliRunner(['version'],10000);cliVersion=(result.stdout||result.stderr).trim().split(/\r?\n/)[0];available=true}catch{}send(res,200,{ok:true,bridgeVersion:'1.3.1',cliAvailable:available,cliVersion,busy},origin);return}
    if(req.method==='GET'&&req.url==='/session'){send(res,200,{token:sessionToken},origin);return}
    if(req.headers['x-cubelink-token']!==sessionToken){send(res,401,{error:'브리지 세션을 다시 연결하세요.'},origin);return}
    if(req.method==='GET'&&req.url==='/ports'){const result=await cliRunner(['board','list','--format','json'],30000),data=JSON.parse(result.stdout||'{}');send(res,200,{ports:normalizePorts(data)},origin);return}
@@ -83,4 +84,4 @@ export function createBridgeServer({sessionToken=randomBytes(24).toString('hex')
    send(res,404,{error:'지원하지 않는 브리지 주소입니다.'},origin);
   }catch(error){send(res,500,{error:String(error.message||error).slice(-60000)},origin)}})}
 
-if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const port=32145,server=createBridgeServer();server.on('error',error=>{if(error.code==='EADDRINUSE'){console.log('Bridge already running.');process.exit(0)}console.error(error);process.exit(1)});server.listen(port,'127.0.0.1',()=>{console.log(`CubeLink Starter Bridge 1.3.0`);console.log(`http://127.0.0.1:${port}`);console.log('이 창을 사이트 사용 중에는 닫지 마세요.')});}
+if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const port=32145,server=createBridgeServer();server.on('error',error=>{if(error.code==='EADDRINUSE'){console.log('Bridge already running.');process.exit(0)}console.error(error);process.exit(1)});server.listen(port,'127.0.0.1',()=>{console.log(`CubeLink Starter Bridge 1.3.1`);console.log(`http://127.0.0.1:${port}`);console.log('이 창을 사이트 사용 중에는 닫지 마세요.')});}

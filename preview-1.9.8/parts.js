@@ -1,6 +1,6 @@
 import {moduleTypes,validateModuleMap} from './module-pinmap.js?v=expansion1';
 import {matchDocumented} from './part-catalog.js?v=1';
-import {initResearch} from './part-research.js?v=name-search1';
+import {initResearch} from './part-research.js?v=name-only2';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={

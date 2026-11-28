@@ -47,7 +47,7 @@ export function initResearch(review=()=>{}){
    const seq=generation;button.disabled=true;find.disabled=true;while(box.children.length>3){box.lastElementChild.remove()}status.textContent='공개 자료 검색 중…';
    try{
     const matches=await publicPartSources(name);if(seq!==generation)return;
-    status.textContent=matches.length?'검색된 자료 후보입니다. 제품과 일치하는지 확인하세요.':'공개 자료 후보가 없습니다. 일반 검색을 이용하세요.';
+    status.textContent=matches.length?'검색된 자료 후보입니다. 제품과 일치하는지 확인한 뒤 자료를 가져오세요.':'공개 자료 후보가 없습니다. 제품의 정확한 모델명으로 다시 검색하세요.';
     for(const p of matches){
      const row=document.createElement('section'),label=document.createElement('strong'),description=document.createElement('p'),link=document.createElement('a'),add=document.createElement('button');
      label.textContent=p.name;description.textContent=p.spec||'자료 설명 없음';link.href=p.source;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 확인';add.type='button';add.textContent='자료 후보로 가져오기';add.onclick=async()=>{add.disabled=true;const current=generation;try{

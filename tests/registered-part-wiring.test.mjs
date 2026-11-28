@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {connectionPlan,wiringSvg} from '../preview-1.9.8/wiring.js';
+const part={name:'KY-018 test',type:'analog',fields:{pin:'A0'}};
+const project=(pin='A0')=>({board:'uno',setup:[],loop:[{type:'printValue',value:{type:'analogRead',pin}}]});
+test('registered model label appears only with matching connected block',()=>{assert.equal(connectionPlan({board:'uno',setup:[],loop:[]},[part]).components.length,0);assert.equal(connectionPlan(project(),[part]).components[0].registeredModel,part.name);assert.equal(connectionPlan(project('A1'),[part]).components[0].registeredModel,undefined);assert.equal(connectionPlan(project(),[{...part,type:'custom'}]).components[0].registeredModel,undefined);assert.match(wiringSvg(project(),'test',[part]).body,/KY-018 test/);});
+test('registered names cannot inject svg markup',()=>{const result=wiringSvg(project(),'test',[{...part,name:'<script>alert(1)</script>'}]);assert.ok(!result.body.includes('<script>'));assert.ok(result.body.includes('&lt;script&gt;'))});

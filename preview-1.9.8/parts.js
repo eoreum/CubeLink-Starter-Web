@@ -45,14 +45,14 @@ export function parsePartLibrary(text){
  });
 }
 export function serializePartLibrary(parts){return JSON.stringify({version:1,parts:parts.map(({name,type,source='',spec='',terminals=[]})=>({name,type,source,spec,terminals}))},null,2)}
-export function initParts({getProject,getWorkspace,baseToolbox}){
+export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()=>{}}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}
  const isTB=p=>p.type==='tb6612'||(p.type==='custom'&&/\bTB6612FNG\b/i.test(p.name));
  const list=()=>Array.isArray(all[getProject().board])?all[getProject().board]:[];
  const refresh=()=>{const parts=list();const host=$('registeredParts');
 
- drawRegistered(host,getProject().mission==='free'?parts.filter(p=>!isTB(p)):[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+(isTB(p)?types.tb6612.label:types[p.type].label)+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}};
+ drawRegistered(host,getProject().mission==='free'?parts.filter(p=>!isTB(p)):[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+(isTB(p)?types.tb6612.label:types[p.type].label)+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}onPartsChanged(parts)};
  const save=()=>localStorage.setItem(storage,JSON.stringify(all));
  const libraryKey='cubelink-shared-part-library-v1';
  let shared=[];try{shared=parsePartLibrary(localStorage.getItem(libraryKey)||'{"version":1,"parts":[]}')}catch{}
@@ -161,5 +161,6 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  },name=>/\bTB6612FNG\b/i.test(name)?'tb6612':catalog.find(c=>normalize(c.name)===normalize(name))?.type);
  $('catalogQuery').oninput=showMatches;
  showMatches();
+ refresh.getRegistered=()=>list();
  return refresh;
 }

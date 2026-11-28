@@ -1,16 +1,18 @@
+import {validateModuleMap} from './module-pinmap.js';
 import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=tb-driver1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 // Attach a registered model name only when its supported electrical profile
 // and allocated pin(s) match a connected block. Never infer wiring from a name.
-export function connectedPartName(project,node,registered=[]){
+export function connectedPart(project,node,registered=[]){
  const compatible={analogRead:'analog',pot:'pot',ldr:'ldr',sound:'sound',temperature:'temperature',pir:'pir',tilt:'tilt',dhtTemperature:'dht',dhtHumidity:'dht',servo:'servo',ultrasonic:'ultrasonic',button:'button',write:'led',motor:'motor'};
  const type=compatible[node.type];
  if(!type||node.driver==='TB6612FNG')return '';
  const roles=type==='ultrasonic'?['trig','echo']:type==='motor'?['en','in1','in2']:['pin'];
  const matches=registered.filter(p=>p.type===type&&typeof p.name==='string'&&p.name.trim()&&roles.every(r=>p.fields?.[r]!==undefined&&node[r]!==undefined&&key(project.board,p.fields[r])===key(project.board,node[r])));
- return matches.length===1?matches[0].name.slice(0,40):'';
+ return matches.length===1?matches[0]:null;
 }
+export function connectedPartName(project,node,registered=[]){return connectedPart(project,node,registered)?.name.slice(0,40)||'';}
 export function connectionPlan(project,registered=[]) {
   const all=walkProject(project),components=[],seen=new Set();
   const add=(id,label,nets,note,kind)=>{if(!seen.has(id)){components.push({id,label,nets,note,kind});seen.add(id)}};
@@ -43,8 +45,14 @@ export function connectionPlan(project,registered=[]) {
     if(b.type==='pir')add('pir-'+b.pin,'PIR 인체감지 센서',[...supply,net(pinName(b.pin),'OUT','#27959b')],'전원을 넣은 뒤 센서 안정화 시간이 필요합니다.','analog');
     if(b.type==='tilt')add('tilt-'+b.pin,'기울기 스위치',[net(pinName(b.pin),'신호 단자','#27959b'),net('GND','반대 단자','#405768')],'INPUT_PULLUP을 사용하면 기울기 상태에 따라 0/1이 바뀝니다.','button');
     if(b.type==='joystickAxis')add('joystick-'+b.pin,'조이스틱 축 · '+b.axis,[...supply,net(b.pin,b.axis==='X'?'VRx':'VRy','#27959b')],'조이스틱 중심값은 약 512이며 끝으로 움직이면 0 또는 1023에 가까워집니다.','analog');
-    const model=connectedPartName(project,b,registered);
-    if(model)for(const component of components.slice(start)){component.label=model+' · '+component.label;component.registeredModel=model;}
+    const part=connectedPart(project,b,registered);
+    if(part)for(const component of components.slice(start)){
+     const model=part.name.slice(0,40);component.label=model+' · '+component.label;component.registeredModel=model;
+     let mapping;try{mapping=validateModuleMap(part.type,part.terminals,part.pinMap)}catch{}
+     if(mapping&&component.kind==='analog'&&component.nets.length===3){
+      component.nets=component.nets.map(n=>({...n,terminal:n.source==='5V'?mapping.power:n.source==='GND'?mapping.ground:mapping.signal}));component.kind='mapped-module';component.note='등록 시 확인한 단자 역할 기준 · 실제 위치와 전기적 사양은 원문을 확인하세요. '+component.note;
+     }
+    }
   }
   return {board:boards[project.board]?.name||project.board,components,issues:errors(project)};
 }
@@ -70,6 +78,9 @@ function componentPicture(c,y) {
   s+=svgText(790,y+237,'HC-SR04',17,'white');
   const tx=[720,780,840,900];['VCC','TRIG','ECHO','GND'].forEach((n,i)=>{s+='<path d="M'+tx[i]+' '+(y+250)+' V'+(y+293)+'" stroke="#b89a54" stroke-width="6"/>'+svgText(tx[i]-20,y+320,n,14);});
   targets=[{x:720,y:y+293},{x:900,y:y+293},{x:780,y:y+293},{x:840,y:y+293}];
+ } else if(c.kind==='mapped-module') {
+  s+='<rect x="690" y="'+(y+110)+'" width="300" height="210" rx="10" fill="#428a6b"/>'+svgText(720,y+140,'등록 모듈 · 개념 단자도',19,'white');
+  targets=c.nets.map((n,i)=>{const py=y+180+i*50;s+='<circle cx="690" cy="'+py+'" r="6" fill="'+n.color+'"/>'+svgText(710,py+5,n.terminal,17,'white');return {x:690,y:py}});
  } else if(c.kind==='led') {
   s+='<path data-led-pin="'+escapeSvg(c.nets[0].source.replace(/^D/,''))+'" d="M790 '+(y+190)+' V'+(y+146)+' A32 32 0 0 1 854 '+(y+146)+' V'+(y+190)+' Z" fill="#8c9ba0" stroke="#6d777c" stroke-width="3"/><path d="M803 '+(y+190)+' V'+(y+215)+' H735 V'+(y+243)+' M841 '+(y+190)+' V'+(y+300)+'" fill="none" stroke="#77858c" stroke-width="4"/>';
   s+=resistor(735,y+270,true)+svgText(690,y+346,'LED 긴 다리 (+)',14)+svgText(835,y+324,'짧은 다리 (−)',14);

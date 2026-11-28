@@ -1,6 +1,6 @@
 import {moduleTypes,validateModuleMap} from './module-pinmap.js?v=expansion1';
 import {matchDocumented} from './part-catalog.js?v=1';
-import {initResearch} from './part-research.js?v=expansion1';
+import {initResearch} from './part-research.js?v=name-search1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
@@ -145,7 +145,7 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
   const imported=query?shared.filter(p=>normalize(p.name).includes(query)||query.includes(normalize(p.name))).map(p=>({...p,model:p.name})):[];const documented=[...imported,...matchDocumented($('catalogQuery').value).filter(p=>!imported.some(i=>i.name===p.name))];const matches=[...documented,...catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query)&&!documented.some(d=>d.type===p.type))];
   const box=$('catalogResults');
   box.replaceChildren();
-  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. ‘목록에 없는 부품 직접 추가’에서 제품 사양을 입력하고 호환 구동 방식을 선택하세요.';
+  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. ‘부품 찾기’를 누르면 공개 자료를 자동 검색합니다.';
   for(const p of matches){
    const button=document.createElement('button');
    button.type='button';

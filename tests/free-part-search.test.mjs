@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../preview-1.9.8/part-research.js',import.meta.url),'utf8');
 const {initResearch}=await import('../preview-1.9.8/part-research.js');
-test('free mode never requests authentication or fetch',async()=>{
+test('name search automatically requests public sources but never authentication',async()=>{
  const node=()=>({value:'',children:[],textContent:'',disabled:false,addEventListener(){},replaceChildren(){this.children=[]},append(...v){this.children.push(...v)},focus(){}});
  const ids=Object.fromEntries(['catalogQuery','researchModel','researchFind','researchStatus','researchResults','researchDisconnect'].map(k=>[k,node()]));
  const restore=[];
- for(const [k,v] of Object.entries({document:{getElementById:id=>ids[id],createElement:node},location:{href:'https://example.com/preview-1.9.8/',assign(){assert.fail('unexpected login')}},fetch(){assert.fail('unexpected fetch')}})){
+ for(const [k,v] of Object.entries({document:{getElementById:id=>ids[id],createElement:node},location:{href:'https://example.com/preview-1.9.8/',assign(){assert.fail('unexpected login')}},fetch(url,opts){assert.equal(new URL(url).hostname,'api.github.com');assert.equal(opts.credentials,'omit');return Promise.resolve({ok:true,json:async()=>({items:[]})})}})){
   const old=Object.getOwnPropertyDescriptor(globalThis,k);restore.push(()=>old?Object.defineProperty(globalThis,k,old):delete globalThis[k]);Object.defineProperty(globalThis,k,{value:v,configurable:true,writable:true});
  }
  try{

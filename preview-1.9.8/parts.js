@@ -1,4 +1,4 @@
-import {initResearch} from './part-research.js?v=1';
+import {initResearch} from './part-research.js?v=free-search1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
@@ -86,7 +86,7 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  }catch(e){$('partStatus').textContent=e.message}};
  const catalog=[
   {name:'TB6612FNG',type:'tb6612',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
-  ...Object.entries(types).filter(([type])=>type!=='custom').map(([type,t])=>({name:t.label,type}))
+  ...Object.entries(types).filter(([type])=>!['custom','tb6612'].includes(type)).map(([type,t])=>({name:t.label,type,aliases:({led:'발광 다이오드 light emitting diode',button:'스위치 택트 푸시버튼 push button',analog:'B10K 10K potentiometer 포텐셔미터 가변 저항',dht:'DHT11 온습도 temperature humidity',servo:'SG90 MG90S 서보 servo',motor:'L298N L298 DC모터 모터드라이버 motor driver',ultrasonic:'HC-SR04 HCSR04 초음파 거리센서 ultrasonic'})[type]||''}))
  ];
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
  function showMatches(){
@@ -94,7 +94,7 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
   const matches=catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query));
   const box=$('catalogResults');
   box.replaceChildren();
-  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. 위에서 AI를 선택하고 부품 찾기를 누르세요.';
+  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. 무료 부품 찾기로 공개 자료를 검색한 후 모델과 핀을 확인하세요.';
   for(const p of matches){
    const button=document.createElement('button');
    button.type='button';

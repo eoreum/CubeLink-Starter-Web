@@ -61,15 +61,15 @@ export function errors(project){
  };
  for(const section of ['setup','loop'])project[section].forEach((node,i)=>visit(node,`${section} ${i+1}`));const nodes=walkProject(project),motors=nodes.filter(n=>n.type==='motor'),servos=nodes.filter(n=>n.type==='servo');
  const channels=motorChannels(project);
- if(channels.size>2)out.push('L298N 한 대에는 모터를 두 개까지 연결할 수 있습니다.');
+ if(motors.some(m=>m.driver!==undefined&&m.driver!=='TB6612FNG'&&m.driver!=='L298N'))out.push('지원하지 않는 모터 드라이버입니다.');
  const bindings=new Map();
  for(const m of motors){
   const signature=[m.en,m.in1,m.in2].join('/');
   const channel=m.channel??channels.get(signature);
-  if(!['A','B'].includes(channel)||channels.get(signature)!==channel||(bindings.has(channel)&&bindings.get(channel)!==signature))out.push('모터 번호별 핀을 통일하고 A와 B에 서로 다른 핀을 지정하세요.');
-  bindings.set(channel,signature);
+  if(!['A','B'].includes(channel)||channels.get(signature)!==channel||(bindings.has((m.driver||'L298N')+channel)&&bindings.get((m.driver||'L298N')+channel)!==signature))out.push('모터 번호별 핀을 통일하고 A와 B에 서로 다른 핀을 지정하세요.');
+  bindings.set((m.driver||'L298N')+channel,signature);
   if(servos.length&&(project.board==='mega'?['44','45','46']:['9','10']).includes(m.en))out.push('Servo 라이브러리와 모터 PWM 타이머가 충돌합니다. 다른 EN 핀을 사용하세요.');
-  for(const n of nodes){if(n.type==='motor'){if([n.en,n.in1,n.in2].some(p=>[m.en,m.in1,m.in2].includes(p))&&!(n.en===m.en&&n.in1===m.in1&&n.in2===m.in2))out.push('DC 모터 채널 핀 충돌');}else if(['pin','trig','echo'].some(f=>n[f]!==undefined&&[m.en,m.in1,m.in2].includes(n[f])))out.push('DC 모터와 다른 블록의 핀 충돌');}
+  for(const n of nodes){if(n.type==='motor'){if([n.en,n.in1,n.in2].some(p=>[m.en,m.in1,m.in2].includes(p))&&((n.driver||'L298N')!==(m.driver||'L298N')||!(n.en===m.en&&n.in1===m.in1&&n.in2===m.in2)))out.push('DC 모터 채널 핀 충돌');}else if(['pin','trig','echo'].some(f=>n[f]!==undefined&&[m.en,m.in1,m.in2].includes(n[f])))out.push('DC 모터와 다른 블록의 핀 충돌');}
  }
  return [...new Set(out)];
 }

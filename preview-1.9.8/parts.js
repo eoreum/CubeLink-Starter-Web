@@ -1,7 +1,8 @@
 import {initResearch} from './part-research.js?v=1';
 import {terminalNames,drawRegistered} from './part-schema.js';
-import {pins,pwmPins,key,walkProject} from './engine.js?v=dual1';
+import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
+ tb6612:{label:'TB6612FNG 듀얼 모터 드라이버',roles:[]},
  custom:{label:'신규 모델 · 단자도 등록 (드라이버 검증 대기)',roles:[]},
  led:{label:'LED / 디지털 출력',roles:[['pin','digital']],block:'starter_write',setup:true},
  button:{label:'버튼 / 디지털 입력',roles:[['pin','digital']],block:'starter_button',input:true},
@@ -29,8 +30,15 @@ export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).
 export function initParts({getProject,getWorkspace,baseToolbox}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}
+ const isTB=p=>p.type==='tb6612'||(p.type==='custom'&&/\bTB6612FNG\b/i.test(p.name));
  const list=()=>Array.isArray(all[getProject().board])?all[getProject().board]:[];
- const refresh=()=>{const parts=list();drawRegistered($('registeredParts'),getProject().mission==='free'?parts:[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+types[p.type].label+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}};
+ const refresh=()=>{const parts=list();const host=$('registeredParts');
+ const preview=parts.some(isTB);
+ if(host.dataset.tb!==String(preview)){
+  host.dataset.tb=String(preview);
+  host.dispatchEvent(new Event('partschange'));
+ }
+ drawRegistered(host,getProject().mission==='free'?parts.filter(p=>!isTB(p)):[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+(isTB(p)?types.tb6612.label:types[p.type].label)+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}};
  const save=()=>localStorage.setItem(storage,JSON.stringify(all));
  for(const [id,t] of Object.entries(types)){const o=document.createElement('option');o.value=id;o.textContent=t.label;$('partType').append(o)}
  let draftUrl='', draftSpec='', draftPins=[];
@@ -74,14 +82,14 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
 
  function register(name,type,source,spec,terminals){
   const board=getProject().board,parts=list();
-  if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source,spec,terminals,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
+  if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source,spec,terminals,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='tb6612'?'등록 완료 · DC 모터 (TB6612FNG) 블록을 사용하세요.':type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
  }
  $('partAdd').onclick=()=>{try{
   $('partStatus').textContent=register($('partName').value.trim(),$('partType').value,draftUrl,draftSpec,draftPins);
   $('partName').value='';
  }catch(e){$('partStatus').textContent=e.message}};
  const catalog=[
-  {name:'TB6612FNG',type:'custom',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
+  {name:'TB6612FNG',type:'tb6612',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
   ...Object.entries(types).filter(([type])=>type!=='custom').map(([type,t])=>({name:t.label,type}))
  ];
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
@@ -106,9 +114,9 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  }
  initResearch((p)=>{
   if(getProject().mission!=='free')$('freeMode').click();
-  const known=catalog.find(c=>normalize(c.name)===normalize(p.name));
+  const known=catalog.find(c=>normalize(c.name)===normalize(p.name))||(/\bTB6612FNG\b/i.test(p.name)?catalog[0]:null);
   return register(p.name,known?.type||'custom',p.source,p.spec,p.terminals);
- },name=>catalog.find(c=>normalize(c.name)===normalize(name))?.type);
+ },name=>/\bTB6612FNG\b/i.test(name)?'tb6612':catalog.find(c=>normalize(c.name)===normalize(name))?.type);
  $('catalogQuery').oninput=showMatches;
  showMatches();
  return refresh;

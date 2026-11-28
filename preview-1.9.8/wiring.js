@@ -1,4 +1,4 @@
-import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=dual1';
+import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=tb-driver1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 export function connectionPlan(project) {
@@ -11,7 +11,10 @@ export function connectionPlan(project) {
   for(const b of all) {
     const second=b.type==='motor'&&channels.get([b.en,b.in1,b.in2].join('/'))==='B';
     if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
-    if(b.type==='motor')add('motor-'+[b.en,b.in1,b.in2].join('-'),'L298N · DC 모터 '+(second?'2 (B) · OUT3/OUT4':'1 (A) · OUT1/OUT2')+' · '+pinName(b.en),[
+    if(b.type==='motor'&&b.driver==='TB6612FNG'){
+      const side=b.channel==='B'?'B':'A';
+      add('tb-'+[b.en,b.in1,b.in2].join('-'),'TB6612FNG · '+side,[net(pinName(b.en),'PWM'+side),net(pinName(b.in1),side+'IN1','#27959b'),net(pinName(b.in2),side+'IN2','#8962a3')],'STBY와 VCC를 5V에 연결합니다.','tbmotor');
+    }else if(b.type==='motor')add('motor-'+[b.en,b.in1,b.in2].join('-'),'L298N · DC 모터 '+(second?'2 (B) · OUT3/OUT4':'1 (A) · OUT1/OUT2')+' · '+pinName(b.en),[
       net(pinName(b.en),second?'ENB':'ENA'),net(pinName(b.in1),second?'IN3':'IN1','#27959b'),net(pinName(b.in2),second?'IN4':'IN2','#8962a3'),net('GND','공통 GND','#405768')
     ],'선택한 채널의 EN 점퍼를 분리합니다. 모터 전원은 외부에서 공급하고 Arduino와 GND를 공유합니다.','motor');
     if(b.type==='servo')add('servo-'+b.pin,'서보모터 · '+pinName(b.pin),[
@@ -95,13 +98,19 @@ function componentPicture(c,y) {
  return {body:s+'</g>',targets};
 }
 function sharedDiagram(plan,title){
- const motors=plan.components.filter(c=>c.kind==='motor');
- const groups=plan.components.filter(c=>c.kind!=='motor');
- if(motors.length)groups.push({kind:'driver',label:'L298N · 듀얼 모터 드라이버',nets:[...motors.flatMap(m=>m.nets.slice(0,3)),{source:'GND',terminal:'GND',color:'#405768'},{source:'모터 전원 +',terminal:'Vs',color:'#bd4545'}]});
+ const groups=plan.components.filter(c=>!['motor','tbmotor'].includes(c.kind));
+ for(const kind of ['motor','tbmotor']){
+  const motors=plan.components.filter(c=>c.kind===kind);
+  if(!motors.length)continue;
+  const tb=kind==='tbmotor',model=tb?'TB6612FNG':'L298N';
+  const supply=[{source:'GND',terminal:'GND',color:'#405768'},{source:'모터 전원 +',terminal:tb?'VM':'Vs',color:'#bd4545'}];
+  if(tb)supply.push({source:'5V',terminal:'VCC',color:'#bc4242'},{source:'5V',terminal:'STBY',color:'#bc4242'});
+  groups.push({kind:'driver',model,motors,label:model+' · 듀얼 모터 드라이버',nets:[...motors.flatMap(m=>m.nets.slice(0,3)),...supply]});
+ }
  const unique=[...new Map(groups.flatMap(c=>c.nets.map(n=>[n.source,n]))).values()];
  const external=n=>['외부 V+','모터 전원 +'].includes(n.source);
  const nets=unique.filter(n=>!external(n)),power=unique.filter(external);
- const height=Math.max(500,110+groups.length*250,280+nets.length*43+power.length*30);
+ const height=Math.max(500,110+groups.length*305,280+nets.length*43+power.length*30);
  const top=Math.max(0,(height-(240+nets.length*43+power.length*30))/2);
  const board=boardPicture(top,nets,plan.board);
  const ports=new Map(nets.map((n,i)=>[n.source,board.ports[i]]));
@@ -111,14 +120,18 @@ function sharedDiagram(plan,title){
  if(power.length)body+=svgText(45,py,'외부 전원 − → 공통 GND',15);
  let lines='',devices='';
  groups.forEach((c,i)=>{
-  const y=90+250*i;
+  const y=90+305*i;
   devices+=svgText(610,y+17,c.label,19);
   let targets=[];
   if(c.kind==='driver'){
-   devices+='<rect data-driver="L298N" x="644" y="'+(y+32)+'" width="170" height="'+(39+c.nets.length*20)+'" rx="10" fill="#92403b"/>'+svgText(695,y+57,'L298N',19,'white');
-   targets=c.nets.map((n,j)=>{const row=y+76+j*20;devices+=svgText(655,row+4,n.terminal,14,'white');return {x:644,y:row}});
-   motors.forEach((m,j)=>{const row=y+83+j*97,en=escapeSvg(m.nets[0].source.slice(1)),b=m.nets[0].terminal==='ENB';
-    devices+='<path d="M814 '+row+' h118 M814 '+(row+9)+' h118" stroke="#56666b" stroke-width="3"/>'+svgText(821,row-8,b?'OUT3 / OUT4':'OUT1 / OUT2',14);
+   devices+='<rect data-driver="'+c.model+'"  x="644" y="'+(y+32)+'" width="170" height="'+(39+c.nets.length*20)+'" rx="10" fill="#92403b"/>'+svgText(660,y+57,c.model,19,'white');
+   if(c.model==='TB6612FNG'){
+    devices+='<rect x="745" y="'+(y+86)+'" width="42" height="59" rx="3" fill="#27323a"/>';
+    for(let pin=0;pin<8;pin++){const py=y+90+pin*7;devices+='<path d="M738 '+py+' h7 M787 '+py+' h7" stroke="#c4c9cb" stroke-width="3"/>';}
+   }
+   targets=c.nets.map((n,j)=>{const row=y+76+j*20;devices+='<circle cx="644" cy="'+row+'" r="4" fill="#e4c680"/>'+svgText(655,row+4,n.terminal,14,'white');return {x:644,y:row}});
+   c.motors.forEach((m,j)=>{const row=y+83+j*97,en=escapeSvg(m.nets[0].source.slice(1)),b=['ENB','PWMB'].includes(m.nets[0].terminal);
+    devices+='<path d="M814 '+row+' h118 M814 '+(row+9)+' h118" stroke="#56666b" stroke-width="3"/>'+svgText(821,row-8,c.model==='TB6612FNG'?(b?'B01 / B02':'A01 / A02'):(b?'OUT3 / OUT4':'OUT1 / OUT2'),14);
     devices+='<g transform="translate(954 '+row+')"><circle r="31" fill="#d9e9e8" stroke="#587472"/><g data-rotor="'+en+'"><path d="M0 -25 Q17 -22 3 -3 L0 0 M22 12 Q9 24 2 5 L0 0 M-22 12 Q-24 -3 -6 -1 L0 0" fill="#167d79"/></g></g>'+svgText(998,row+5,b?'모터 2':'모터 1',15)+'<text data-motor-label="'+en+'" x="891" y="'+(row+48)+'" font-size="15">대기 · 0/255</text>';
    });
   }else{
@@ -135,7 +148,7 @@ function sharedDiagram(plan,title){
 }
 export function wiringSvg(project,title='아두이노 연결 그림') {
  const plan=connectionPlan(project),items=plan.components,total=Math.max(430,90+items.length*470);
- if(items.length>1)return sharedDiagram(plan,title);
+ if(items.length>1||items.some(c=>c.kind==='tbmotor'))return sharedDiagram(plan,title);
  let body='<rect width="1100" height="'+total+'" rx="14" fill="#f3f8fa"/>'+svgText(24,32,title,23)+svgText(24,61,'색 선의 양 끝과 핀 이름을 확인하세요. 보드 모델별 실제 핀 위치는 제품 표기를 확인하세요.',15);
  if(!items.length){const b=boardPicture(85,[],plan.board);body+=b.body+'<path d="M24 230 H10 V380 H630" fill="none" stroke="#485d6b" stroke-width="12"/><rect x="630" y="350" width="190" height="80" rx="8" fill="#dbe7ed"/>'+svgText(655,390,'PC · USB',25)+svgText(430,175,'USB 케이블만 연결',28)+svgText(430,220,'외부 부품은 필요 없습니다.',19);}
  for(const [i,c]of items.entries()) {

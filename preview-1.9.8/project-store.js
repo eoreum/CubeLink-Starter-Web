@@ -1,4 +1,4 @@
-import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=1.9.6-motor';
+import {boards,errors,examples,migrateLegacyProject,walkProject} from './engine.js?v=tb-driver1';
 
 export const STORAGE_KEY = 'cubelink-starter-project-v1';
 export function parseProject(text) {

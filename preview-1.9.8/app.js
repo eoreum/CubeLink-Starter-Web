@@ -1,4 +1,4 @@
-import {initParts} from './parts.js?v=manual-parts1';
+import {initParts} from './parts.js?v=catalog-profiles1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=dual1';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=tb-driver1';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=tb-driver1';

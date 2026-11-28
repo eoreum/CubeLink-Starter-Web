@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {matchDocumented} from '../preview-1.9.8/part-catalog.js';
+test('product model can be matched inside Korean product names',()=>{assert.equal(matchDocumented('조도센서 모듈 KY-018')[0].type,'analog');assert.equal(matchDocumented('KY037 마이크')[0].type,'sound');assert.equal(matchDocumented('B10K')[0].type,'pot');assert.deepEqual(matchDocumented('unknown A4988'),[]);assert.deepEqual(matchDocumented(''),[])});

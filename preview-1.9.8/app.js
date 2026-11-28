@@ -1,11 +1,11 @@
-import {initParts} from './parts.js?v=part-library1';
+import {initParts} from './parts.js?v=part-wiring1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=dual1';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=tb-driver1';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=tb-driver1';
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
 import {parseProject,serializeProject} from './project-store.js?v=tb-driver1';
 import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
-import {connectionPlan,renderWiring} from './wiring.js?v=tb-driver1';
+import {connectionPlan,renderWiring} from './wiring.js?v=part-wiring1';
 import {initCircuitView} from './circuit-view.js?v=motor-view';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
@@ -35,10 +35,11 @@ if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100
 if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
 function updateCircuit(){
  const diagramProject=activeMission==='free'||$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
- const signature=activeMission+'|'+JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
+ const registered=activeMission==='free'?(refreshParts.getRegistered?.()||[]):[];
+ const signature=activeMission+'|'+JSON.stringify(diagramProject)+'|'+JSON.stringify(registered)+'|'+$('wiringMode').value;
  if(signature!==diagramSignature){
   const circuit=$('circuit');
-  const empty=activeMission==='free'&&!connectionPlan(diagramProject).components.length;
+  const empty=activeMission==='free'&&!connectionPlan(diagramProject,registered).components.length;
   circuit.style.display=empty?'none':'';
   $('expandCircuit').disabled=empty;
   if(empty){
@@ -46,7 +47,7 @@ function updateCircuit(){
    if($('circuitDialog').open)$('circuitDialog').close();
   }else{
    const mine=activeMission==='free'||$('wiringMode').value==='mine';
-   renderWiring(circuit,diagramProject,lessons[activeMission].title+(mine?' · 내 블록 연결도':' · 미션 배선 안내'));
+   renderWiring(circuit,diagramProject,lessons[activeMission].title+(mine?' · 내 블록 연결도':' · 미션 배선 안내'),registered);
   }
   diagramSignature=signature;
  }
@@ -90,7 +91,7 @@ async function receive(activePort){const decoder=new TextDecoder();let pending='
 async function openSerial(selected,message='── 실제 USB 연결 · 9600 baud ──'){connecting=true;connectionUI();try{await selected.open({baudRate:9600});port=selected;liveChannel.failed=false;writer=port.writable.getWriter();$('monitorSource').value='hardware';appendLog('hardware',message);showLogs();receive(port);return true}catch(error){port=null;throw error}finally{connecting=false;connectionUI()}}
 $('serialConnect').onclick=async()=>{if(port){await disconnect();return}if(!('serial'in navigator)||!window.isSecureContext){toast('Web Serial은 데스크톱 Chrome의 HTTPS 또는 localhost가 필요합니다');return}try{await openSerial(await navigator.serial.requestPort())}catch(err){toast(err.name==='NotFoundError'?'포트 선택을 취소했습니다':'연결 실패: '+err.message)}};
 $('sendForm').onsubmit=async e=>{e.preventDefault();if(liveRunner.task)return;if(!writer){toast('실제 USB를 먼저 연결하세요');return}const text=$('serialText').value;try{await writer.write(new TextEncoder().encode(text+'\n'));appendLog('hardware','> '+text);$('serialText').value=''}catch(err){toast('전송 실패: '+err.message)}};
-prepareMissions();initCircuitView();restore();initEditor();refreshParts=initParts({getProject:()=>project,getWorkspace:()=>workspace,baseToolbox:toolbox});refreshParts();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission;project=next;inputs=freshInputs();logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 기초 설계 적용 · '+lessons[mission].title+' ──')},toast});initHardwareUpload({getBoard:()=>project.board,stopLive:()=>liveRunner.stop(),getCode:()=>generate(project),getErrors:()=>errors(project),isSerialConnected:()=>Boolean(port),releaseSerial:disconnect,resumeSerial:async selected=>{await new Promise(resolve=>setTimeout(resolve,900));return openSerial(selected,'── 업로드 후 실제 USB 다시 연결 · 9600 baud ──')},selectHardwareMonitor:()=>{$('monitorSource').value='hardware';showLogs()},appendHardwareLog:line=>appendLog('hardware',line),toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
+prepareMissions();initCircuitView();restore();initEditor();refreshParts=initParts({getProject:()=>project,getWorkspace:()=>workspace,baseToolbox:toolbox,onPartsChanged:()=>{diagramSignature='';updateCircuit()}});refreshParts();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission;project=next;inputs=freshInputs();logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 기초 설계 적용 · '+lessons[mission].title+' ──')},toast});initHardwareUpload({getBoard:()=>project.board,stopLive:()=>liveRunner.stop(),getCode:()=>generate(project),getErrors:()=>errors(project),isSerialConnected:()=>Boolean(port),releaseSerial:disconnect,resumeSerial:async selected=>{await new Promise(resolve=>setTimeout(resolve,900));return openSerial(selected,'── 업로드 후 실제 USB 다시 연결 · 9600 baud ──')},selectHardwareMonitor:()=>{$('monitorSource').value='hardware';showLogs()},appendHardwareLog:line=>appendLog('hardware',line),toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
 
 function prepareMissions(){
  $('freeMode').onclick=()=>{if(activeMission!=='free')switchMission('free')};

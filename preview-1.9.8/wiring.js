@@ -1,7 +1,17 @@
 import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=tb-driver1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
-export function connectionPlan(project) {
+// Attach a registered model name only when its supported electrical profile
+// and allocated pin(s) match a connected block. Never infer wiring from a name.
+export function connectedPartName(project,node,registered=[]){
+ const compatible={analogRead:'analog',pot:'pot',ldr:'ldr',sound:'sound',temperature:'temperature',pir:'pir',tilt:'tilt',dhtTemperature:'dht',dhtHumidity:'dht',servo:'servo',ultrasonic:'ultrasonic',button:'button',write:'led',motor:'motor'};
+ const type=compatible[node.type];
+ if(!type||node.driver==='TB6612FNG')return '';
+ const roles=type==='ultrasonic'?['trig','echo']:type==='motor'?['en','in1','in2']:['pin'];
+ const matches=registered.filter(p=>p.type===type&&typeof p.name==='string'&&p.name.trim()&&roles.every(r=>p.fields?.[r]!==undefined&&node[r]!==undefined&&key(project.board,p.fields[r])===key(project.board,node[r])));
+ return matches.length===1?matches[0].name.slice(0,40):'';
+}
+export function connectionPlan(project,registered=[]) {
   const all=walkProject(project),components=[],seen=new Set();
   const add=(id,label,nets,note,kind)=>{if(!seen.has(id)){components.push({id,label,nets,note,kind});seen.add(id)}};
   const net=(source,terminal,color='#c28a2d')=>({source,terminal,color});
@@ -9,6 +19,7 @@ export function connectionPlan(project) {
   const outputs=new Set(all.filter(b=>b.type==='write').map(b=>key(project.board,b.pin)));
   const channels=motorChannels(project);
   for(const b of all) {
+    const start=components.length;
     const second=b.type==='motor'&&channels.get([b.en,b.in1,b.in2].join('/'))==='B';
     if(b.type==='write')add('led-'+key(project.board,b.pin),'외부 LED · '+pinName(b.pin),[net(pinName(b.pin),'220~330Ω 직렬 저항 → LED 긴 다리 (+)'),net('GND','LED 짧은 다리 (−)','#405768')],'내장 LED(L)는 D13에서 외부 배선 없이 관찰할 수 있습니다.','led');
     if(b.type==='motor'&&b.driver==='TB6612FNG'){
@@ -32,6 +43,8 @@ export function connectionPlan(project) {
     if(b.type==='pir')add('pir-'+b.pin,'PIR 인체감지 센서',[...supply,net(pinName(b.pin),'OUT','#27959b')],'전원을 넣은 뒤 센서 안정화 시간이 필요합니다.','analog');
     if(b.type==='tilt')add('tilt-'+b.pin,'기울기 스위치',[net(pinName(b.pin),'신호 단자','#27959b'),net('GND','반대 단자','#405768')],'INPUT_PULLUP을 사용하면 기울기 상태에 따라 0/1이 바뀝니다.','button');
     if(b.type==='joystickAxis')add('joystick-'+b.pin,'조이스틱 축 · '+b.axis,[...supply,net(b.pin,b.axis==='X'?'VRx':'VRy','#27959b')],'조이스틱 중심값은 약 512이며 끝으로 움직이면 0 또는 1023에 가까워집니다.','analog');
+    const model=connectedPartName(project,b,registered);
+    if(model)for(const component of components.slice(start)){component.label=model+' · '+component.label;component.registeredModel=model;}
   }
   return {board:boards[project.board]?.name||project.board,components,issues:errors(project)};
 }
@@ -146,8 +159,8 @@ function sharedDiagram(plan,title){
  if(plan.issues.length)devices+=svgText(24,height-8,'⚠ '+plan.issues[0],15,'#a04531');
  return {body:body+lines+devices,height,plan};
 }
-export function wiringSvg(project,title='아두이노 연결 그림') {
- const plan=connectionPlan(project),items=plan.components,total=Math.max(430,90+items.length*470);
+export function wiringSvg(project,title='아두이노 연결 그림',registered=[]) {
+ const plan=connectionPlan(project,registered),items=plan.components,total=Math.max(430,90+items.length*470);
  if(items.length>1||items.some(c=>c.kind==='tbmotor'))return sharedDiagram(plan,title);
  let body='<rect width="1100" height="'+total+'" rx="14" fill="#f3f8fa"/>'+svgText(24,32,title,23)+svgText(24,61,'색 선의 양 끝과 핀 이름을 확인하세요. 보드 모델별 실제 핀 위치는 제품 표기를 확인하세요.',15);
  if(!items.length){const b=boardPicture(85,[],plan.board);body+=b.body+'<path d="M24 230 H10 V380 H630" fill="none" stroke="#485d6b" stroke-width="12"/><rect x="630" y="350" width="190" height="80" rx="8" fill="#dbe7ed"/>'+svgText(655,390,'PC · USB',25)+svgText(430,175,'USB 케이블만 연결',28)+svgText(430,220,'외부 부품은 필요 없습니다.',19);}
@@ -168,7 +181,7 @@ export function wiringSvg(project,title='아두이노 연결 그림') {
  if(plan.issues.length)body+=svgText(24,total-8,'⚠ 핀/설정 오류를 먼저 수정하세요.',15,'#a04531');
  return {body,height:total,plan};
 }
-export function renderWiring(svg,project,title) {
- const result=wiringSvg(project,title);svg.setAttribute('viewBox','0 0 1100 '+result.height);svg.innerHTML=result.body;
+export function renderWiring(svg,project,title,registered=[]) {
+ const result=wiringSvg(project,title,registered);svg.setAttribute('viewBox','0 0 1100 '+result.height);svg.innerHTML=result.body;
  svg.setAttribute('aria-label',title+' · '+(result.plan.components.map(c=>c.label).join(', ')||'USB 연결'));
 }

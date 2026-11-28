@@ -1,4 +1,4 @@
-import {initResearch} from './part-research.js?v=free-search1';
+import {initResearch} from './part-research.js?v=no-auth2';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={

@@ -14,6 +14,7 @@ test('free mode never requests authentication or fetch',async()=>{
   ids.researchModel.value='openai/gpt-5-mini';
   initResearch(()=>assert.fail('unexpected registration'),()=>null);
   assert.equal(ids.researchModel.value,'free');
+  ids.researchModel.value='openai/gpt-5-mini'; // stale UI value must never trigger login
   ids.catalogQuery.value='A4988 & test';
   await ids.researchFind.onclick();
   assert.equal(ids.researchResults.children.length,2);

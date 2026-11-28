@@ -1,3 +1,4 @@
+import {moduleTypes,validateModuleMap} from './module-pinmap.js';
 import {matchDocumented} from './part-catalog.js?v=1';
 import {initResearch} from './part-research.js?v=readme-evidence1';
 import {terminalNames,drawRegistered} from './part-schema.js';
@@ -41,10 +42,10 @@ export function parsePartLibrary(text){
  return data.parts.map(p=>{
   if(!p||typeof p.name!=='string'||!p.name.trim()||p.name.length>40||!Object.hasOwn(types,p.type)||typeof p.spec!=='string'||p.spec.length>4000||typeof p.source!=='string'||p.source.length>2000)throw Error('부품 이름 또는 사양을 확인하세요.');
   if(p.source){const u=new URL(p.source);if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error('제품 자료 주소를 확인하세요.')}
-  return {name:p.name.trim(),type:p.type,source:p.source,spec:p.spec,terminals:terminalNames(p.terminals||[])};
+  const terminals=terminalNames(p.terminals||[]),pinMap=validateModuleMap(p.type,terminals,p.pinMap);return {name:p.name.trim(),type:p.type,source:p.source,spec:p.spec,terminals,...(pinMap?{pinMap}:{})};
  });
 }
-export function serializePartLibrary(parts){return JSON.stringify({version:1,parts:parts.map(({name,type,source='',spec='',terminals=[]})=>({name,type,source,spec,terminals}))},null,2)}
+export function serializePartLibrary(parts){return JSON.stringify({version:1,parts:parts.map(({name,type,source='',spec='',terminals=[],pinMap})=>({name,type,source,spec,terminals,...(pinMap?{pinMap}:{})}))},null,2)}
 export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()=>{}}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}
@@ -73,7 +74,11 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
 
  for(const [id,t] of Object.entries(types)){const o=document.createElement('option');o.value=id;o.textContent=t.label;$('partType').append(o)}
  let draftUrl='', draftSpec='', draftPins=[],manual=false;
- function resetDraft(){draftUrl='';draftSpec='';draftPins=[];manual=false;$('sourceNote').textContent='';$('manualSource').value='';$('manualSpec').value='';$('manualPins').value='';$('manualConfirmed').checked=false;$('manualPartDetails').open=false;$('partStatus').textContent='';$('partName').value='';$('partType').value='custom'}
+ const mapFields=['mapPower','mapGround','mapSignal'];
+ function clearMap(){for(const id of mapFields)$(id).value='';$('mapEnabled').checked=false;}
+ function showMap(){const enabled=moduleTypes.includes($('partType').value);$('moduleMap').hidden=!enabled;if(!enabled)clearMap()}
+ $('partType').addEventListener('change',showMap);
+ function resetDraft(){clearMap();$('moduleMap').hidden=true;draftUrl='';draftSpec='';draftPins=[];manual=false;$('sourceNote').textContent='';$('manualSource').value='';$('manualSpec').value='';$('manualPins').value='';$('manualConfirmed').checked=false;$('manualPartDetails').open=false;$('partStatus').textContent='';$('partName').value='';$('partType').value='custom'}
  $('manualPartOpen').onclick=()=>{const name=$('catalogQuery').value.trim();$('aiMakerDialog').close();if(getProject().mission!=='free')$('freeMode').click();resetDraft();manual=true;refresh();$('partName').value=name.slice(0,40);$('manualPartDetails').open=true;$('partDialog').showModal()};
  function sourceUrl(){
   const u=new URL($('sourceUrl').value.trim());
@@ -113,9 +118,9 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
  }catch(e){$('draftStatus').textContent=e.message}};
  $('partOpen').onclick=()=>{resetDraft();refresh();$('partDialog').showModal()};$('partClose').onclick=()=>$('partDialog').close();
 
- function register(name,type,source,spec,terminals){
+ function register(name,type,source,spec,terminals,pinMap){
   const board=getProject().board,parts=list();
-  if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source,spec,terminals,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='tb6612'?'등록 완료 · DC 모터 (TB6612FNG) 블록을 사용하세요.':type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
+  if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const mapping=validateModuleMap(type,terminals,pinMap);const item={id:crypto.randomUUID(),source,spec,terminals,name,type,...(mapping?{pinMap:mapping}:{}),fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='tb6612'?'등록 완료 · DC 모터 (TB6612FNG) 블록을 사용하세요.':type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
  }
  $('partAdd').onclick=()=>{try{
   const type=$('partType').value;
@@ -124,7 +129,9 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
    draftSpec=$('manualSpec').value.trim();draftPins=terminalNames($('manualPins').value.split(',').map(s=>s.trim()).filter(Boolean));
    if(type!=='custom'&&(!draftUrl||!draftSpec||!draftPins.length||!$('manualConfirmed').checked))throw Error('구동 블록 등록에는 출처, 사양, 단자명 및 호환 확인이 필요합니다.');
   }
-  $('partStatus').textContent=register($('partName').value.trim(),type,draftUrl,draftSpec,draftPins);
+  const mapping=$('mapEnabled').checked?validateModuleMap(type,draftPins,{power:$('mapPower').value.trim(),ground:$('mapGround').value.trim(),signal:$('mapSignal').value.trim(),supply:'5V'}):undefined;
+  if(mapping&&(!$('manualConfirmed').checked||!draftUrl||!draftSpec))throw Error('실제 5V 호환 및 단자 역할을 먼저 확인하세요.');
+  $('partStatus').textContent=register($('partName').value.trim(),type,draftUrl,draftSpec,draftPins,mapping);clearMap();
   $('partName').value='';draftUrl='';draftSpec='';draftPins=[];$('manualConfirmed').checked=false;
  }catch(e){$('partStatus').textContent=e.message}};
  const catalog=[
@@ -144,7 +151,7 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
    button.textContent=p.name+(p.model?' · 사양 불러오기':' 추가')+' · '+(p.type==='custom'?'단자도만 지원':'블록 지원');
    button.onclick=()=>{
     if(p.model){
-     $('manualPartOpen').click();$('partName').value=p.name;$('partType').value=p.type;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('manualPins').value=p.terminals.join(', ');$('manualConfirmed').checked=false;return;
+     $('manualPartOpen').click();$('partName').value=p.name;$('partType').value=p.type;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('manualPins').value=p.terminals.join(', ');showMap();if(p.pinMap){$('mapPower').value=p.pinMap.power;$('mapGround').value=p.pinMap.ground;$('mapSignal').value=p.pinMap.signal;$('mapEnabled').checked=true;}$('manualConfirmed').checked=false;return;
     }
     if(getProject().mission!=='free')$('freeMode').click();
     try{

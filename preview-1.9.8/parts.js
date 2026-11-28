@@ -1,5 +1,5 @@
 import {matchDocumented} from './part-catalog.js?v=1';
-import {initResearch} from './part-research.js?v=no-auth2';
+import {initResearch} from './part-research.js?v=public-source1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
@@ -154,11 +154,10 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
    box.append(button);
   }
  }
- initResearch((p)=>{
-  if(getProject().mission!=='free')$('freeMode').click();
-  const known=catalog.find(c=>normalize(c.name)===normalize(p.name))||(/\bTB6612FNG\b/i.test(p.name)?catalog[0]:null);
-  return register(p.name,known?.type||'custom',p.source,p.spec,p.terminals);
- },name=>/\bTB6612FNG\b/i.test(name)?'tb6612':catalog.find(c=>normalize(c.name)===normalize(name))?.type);
+ initResearch(p=>{
+  $('manualPartOpen').click();$('partName').value=p.name;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('partType').value='custom';
+  $('sourceNote').textContent='공개 자료 후보입니다. 단자와 전기적 사양은 원문을 확인한 후 입력하세요.';
+ });
  $('catalogQuery').oninput=showMatches;
  showMatches();
  refresh.getRegistered=()=>list();

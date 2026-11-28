@@ -10,6 +10,12 @@ export const types={
  dht:{label:'DHT11 온습도 센서',roles:[['pin','digital']],block:'starter_dhtTemperature',library:'DHT sensor library'},
  servo:{library:'Servo',label:'서보모터',roles:[['pin','digital']],block:'starter_servo'},
  motor:{label:'L298N DC 모터 채널',roles:[['en','pwm'],['in1','digital'],['in2','digital']],block:'starter_motor'},
+ pir:{label:'PIR 인체감지 센서',roles:[['pin','digital']],block:'starter_pir',inputMode:'INPUT'},
+ tilt:{label:'기울기 스위치',roles:[['pin','digital']],block:'starter_tilt',input:true},
+ sound:{label:'아날로그 소리 센서',roles:[['pin','analog']],block:'starter_sound'},
+ temperature:{label:'TMP36 온도 센서',roles:[['pin','analog']],block:'starter_temperature'},
+ pot:{label:'가변저항 (3단자)',roles:[['pin','analog']],block:'starter_pot'},
+ ldr:{label:'LDR 조도센서 (분압)',roles:[['pin','analog']],block:'starter_ldr'},
  ultrasonic:{label:'HC-SR04 초음파',roles:[['trig','digital'],['echo','digital']],block:'starter_ultrasonic'}
 };
 const available=(board,kind)=>kind==='analog'?pins(board,true):kind==='pwm'?pwmPins(board):pins(board).filter(p=>!p.startsWith('A')&&!['0','1'].includes(p));
@@ -26,7 +32,7 @@ export function validateParts(board,parts){
  const used=new Set(),servo=parts.some(p=>p.type==='servo');
  for(const p of parts){if(!Object.hasOwn(types,p.type))throw Error('지원하지 않는 부품');for(const [r,k] of types[p.type].roles){const v=p.fields[r],canonical=key(board,v);if(!available(board,k).includes(v)||used.has(canonical))throw Error('핀 충돌 또는 지원하지 않는 핀: '+v);if(servo&&k==='pwm'&&(board==='mega'?['44','45','46']:['9','10']).includes(v))throw Error('Servo 타이머와 PWM 충돌: '+v);used.add(canonical);}}
 }
-export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).map(p=>{const t=types[p.type],contents=[{kind:'block',type:t.block,fields:p.type==='motor'?{channel:parts.filter(x=>x.type==='motor').indexOf(p)===0?'A':'B',...p.fields}:p.fields}];if(p.type==='dht')contents.push({kind:'block',type:'starter_dhtHumidity',fields:p.fields});if(t.setup||t.input)contents.unshift({kind:'block',type:'starter_mode',fields:{pin:p.fields.pin,mode:t.input?'INPUT_PULLUP':'OUTPUT'}});return {kind:'category',name:p.name,colour:'#087e80',contents};});}
+export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).map(p=>{const t=types[p.type],contents=[{kind:'block',type:t.block,fields:p.type==='motor'?{channel:parts.filter(x=>x.type==='motor').indexOf(p)===0?'A':'B',...p.fields}:p.fields}];if(p.type==='dht')contents.push({kind:'block',type:'starter_dhtHumidity',fields:p.fields});if(t.setup||t.input||t.inputMode)contents.unshift({kind:'block',type:'starter_mode',fields:{pin:p.fields.pin,mode:t.inputMode||(t.input?'INPUT_PULLUP':'OUTPUT')}});return {kind:'category',name:p.name,colour:'#087e80',contents};});}
 export function initParts({getProject,getWorkspace,baseToolbox}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}
@@ -37,7 +43,9 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  drawRegistered(host,getProject().mission==='free'?parts.filter(p=>!isTB(p)):[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+(isTB(p)?types.tb6612.label:types[p.type].label)+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}};
  const save=()=>localStorage.setItem(storage,JSON.stringify(all));
  for(const [id,t] of Object.entries(types)){const o=document.createElement('option');o.value=id;o.textContent=t.label;$('partType').append(o)}
- let draftUrl='', draftSpec='', draftPins=[];
+ let draftUrl='', draftSpec='', draftPins=[],manual=false;
+ function resetDraft(){draftUrl='';draftSpec='';draftPins=[];manual=false;$('sourceNote').textContent='';$('manualSource').value='';$('manualSpec').value='';$('manualPins').value='';$('manualConfirmed').checked=false;$('manualPartDetails').open=false;$('partStatus').textContent='';$('partName').value='';$('partType').value='custom'}
+ $('manualPartOpen').onclick=()=>{const name=$('catalogQuery').value.trim();$('aiMakerDialog').close();if(getProject().mission!=='free')$('freeMode').click();resetDraft();manual=true;refresh();$('partName').value=name.slice(0,40);$('manualPartDetails').open=true;$('partDialog').showModal()};
  function sourceUrl(){
   const u=new URL($('sourceUrl').value.trim());
   if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw Error('공개 제품 페이지 URL을 입력하세요.');
@@ -71,22 +79,28 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  $('reviewPart').onclick=()=>{try{
   const url=sourceUrl(), d=JSON.parse($('partDraft').value.trim().replace(/^```(?:json)?\s*|\s*```$/gi,''));
   if(d.source!==url||typeof d.name!=='string'||!d.name.trim()||d.name.length>40||typeof d.spec!=='string'||!d.spec.trim())throw Error('원본 링크와 모델명, 핀·전원 사양을 확인하세요.');
-  if(!Object.hasOwn(types,d.type))d.type='custom';draftPins=terminalNames(d.terminals??[]);draftSpec=d.spec.slice(0,4000);
+  if(!Object.hasOwn(types,d.type))d.type='custom';resetDraft();draftPins=terminalNames(d.terminals??[]);draftSpec=d.spec.slice(0,4000);
   $('aiMakerDialog').close();$('freeMode').click();refresh();draftUrl=url;$('sourceNote').textContent=d.spec+' · '+url;$('partName').value=d.name;$('partType').value=d.type;$('partDialog').showModal();
  }catch(e){$('draftStatus').textContent=e.message}};
- $('partOpen').onclick=()=>{refresh();$('partDialog').showModal()};$('partClose').onclick=()=>$('partDialog').close();
+ $('partOpen').onclick=()=>{resetDraft();refresh();$('partDialog').showModal()};$('partClose').onclick=()=>$('partDialog').close();
 
  function register(name,type,source,spec,terminals){
   const board=getProject().board,parts=list();
   if(!name||name.length>40)throw Error('부품 이름을 1~40자로 입력하세요.');if(parts.some(p=>p.name===name))throw Error('같은 이름이 이미 등록되어 있습니다.');const item={id:crypto.randomUUID(),source,spec,terminals,name,type,fields:allocate(board,type,parts,getProject())};validateParts(board,[...parts,item]);all[board]=[...parts,item];save();refresh();return (type==='tb6612'?'등록 완료 · DC 모터 (TB6612FNG) 블록을 사용하세요.':type==='custom'?'단자도 등록 완료 · 전용 실행 드라이버 검증 대기':'등록 완료 · '+name+' 블록과 단자도를 준비했습니다.')
  }
  $('partAdd').onclick=()=>{try{
-  $('partStatus').textContent=register($('partName').value.trim(),$('partType').value,draftUrl,draftSpec,draftPins);
-  $('partName').value='';
+  const type=$('partType').value;
+  if(manual||$('manualPartDetails').open){
+   const raw=$('manualSource').value.trim();if(raw){const u=new URL(raw);if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error('공개 제품 자료 URL을 입력하세요.');draftUrl=u.href;}else draftUrl='';
+   draftSpec=$('manualSpec').value.trim();draftPins=terminalNames($('manualPins').value.split(',').map(s=>s.trim()).filter(Boolean));
+   if(type!=='custom'&&(!draftUrl||!draftSpec||!draftPins.length||!$('manualConfirmed').checked))throw Error('구동 블록 등록에는 출처, 사양, 단자명 및 호환 확인이 필요합니다.');
+  }
+  $('partStatus').textContent=register($('partName').value.trim(),type,draftUrl,draftSpec,draftPins);
+  $('partName').value='';draftUrl='';draftSpec='';draftPins=[];$('manualConfirmed').checked=false;
  }catch(e){$('partStatus').textContent=e.message}};
  const catalog=[
   {name:'TB6612FNG',type:'tb6612',aliases:'도시바 듀얼 DC 모터 드라이버',source:'https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/board-overview',spec:'SparkFun 모듈 기준. VM 모터 전원, VCC 로직 전원, 공통 GND. STBY가 HIGH일 때 두 채널을 구동합니다.',terminals:['VM','VCC','GND','STBY','PWMA','AIN1','AIN2','A01','A02','PWMB','BIN1','BIN2','B01','B02']},
-  ...Object.entries(types).filter(([type])=>!['custom','tb6612'].includes(type)).map(([type,t])=>({name:t.label,type,aliases:({led:'발광 다이오드 light emitting diode',button:'스위치 택트 푸시버튼 push button',analog:'B10K 10K potentiometer 포텐셔미터 가변 저항',dht:'DHT11 온습도 temperature humidity',servo:'SG90 MG90S 서보 servo',motor:'L298N L298 DC모터 모터드라이버 motor driver',ultrasonic:'HC-SR04 HCSR04 초음파 거리센서 ultrasonic'})[type]||''}))
+  ...Object.entries(types).filter(([type])=>!['custom','tb6612'].includes(type)).map(([type,t])=>({name:t.label,type,aliases:({led:'발광 다이오드 light emitting diode',button:'스위치 택트 푸시버튼 push button',analog:'아날로그 센서 출력 AO',pot:'B10K 10K potentiometer 포텐셔미터 가변 저항',ldr:'LDR CDS 조도 광저항',pir:'HC-SR501 HCSR501 인체 감지 PIR',tilt:'기울기 경사 스위치 tilt',sound:'KY-038 KY-037 소리 음향 센서',temperature:'TMP36 온도 temperature',dht:'DHT11 온습도 temperature humidity',servo:'SG90 MG90S 서보 servo',motor:'L298N L298 DC모터 모터드라이버 motor driver',ultrasonic:'HC-SR04 HCSR04 초음파 거리센서 ultrasonic'})[type]||''}))
  ];
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
  function showMatches(){
@@ -94,7 +108,7 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
   const matches=catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query));
   const box=$('catalogResults');
   box.replaceChildren();
-  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. 무료 부품 찾기로 공개 자료를 검색한 후 모델과 핀을 확인하세요.';
+  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. ‘목록에 없는 부품 직접 추가’에서 제품 사양을 입력하고 호환 구동 방식을 선택하세요.';
   for(const p of matches){
    const button=document.createElement('button');
    button.type='button';

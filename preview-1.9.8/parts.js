@@ -1,3 +1,4 @@
+import {initResearch} from './part-research.js?v=1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=dual1';
 export const types={
@@ -89,7 +90,7 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
   const matches=catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query));
   const box=$('catalogResults');
   box.replaceChildren();
-  $('catalogStatus').textContent=matches.length?'':'검색 결과가 없습니다. 아래 제품 링크 분석을 이용하세요.';
+  $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. 위에서 AI를 선택하고 부품 찾기를 누르세요.';
   for(const p of matches){
    const button=document.createElement('button');
    button.type='button';
@@ -103,6 +104,11 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
    box.append(button);
   }
  }
+ initResearch((p)=>{
+  if(getProject().mission!=='free')$('freeMode').click();
+  const known=catalog.find(c=>normalize(c.name)===normalize(p.name));
+  return register(p.name,known?.type||'custom',p.source,p.spec,p.terminals);
+ },name=>catalog.find(c=>normalize(c.name)===normalize(name))?.type);
  $('catalogQuery').oninput=showMatches;
  showMatches();
  return refresh;

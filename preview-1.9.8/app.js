@@ -1,4 +1,4 @@
-import {initParts} from './parts.js?v=catalog1';
+import {initParts} from './parts.js?v=research1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=dual1';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=dual1';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=dual1';

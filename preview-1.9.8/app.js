@@ -1,11 +1,11 @@
-import {initParts} from './parts.js?v=tb-driver1';
+import {initParts} from './parts.js?v=connected1';
 import {LiveChannel,LiveRunner} from './live-runner.js?v=dual1';
 import {boards,pins,key,errors,warnings,generate,Simulation,examples,blockCount,walkProject} from './engine.js?v=tb-driver1';
 import {registerBlocks,toModel,fromModel,connectedIds,orphanCount,toolbox} from './block-editor.js?v=tb-driver1';
 import {initLayout} from './layout.js?v=1.9.5-web-layout';
 import {parseProject,serializeProject} from './project-store.js?v=tb-driver1';
 import {lessons,missionOrder} from './lessons.js?v=1.9.6-motor';
-import {renderWiring} from './wiring.js?v=tb-driver1';
+import {connectionPlan,renderWiring} from './wiring.js?v=tb-driver1';
 import {initCircuitView} from './circuit-view.js?v=motor-view';
 import {PRACTICE_KEY,blankProject,answerProject} from './practice.js?v=1.9.6-motor';
 import {initAiMaker} from './ai-maker-ui.js?v=1.7.1-ai-modes';
@@ -34,14 +34,22 @@ if(all.some(b=>['temperature','dhtTemperature'].includes(b.type)))slider('온도
 if(all.some(b=>b.type==='dhtHumidity'))slider('습도 (%)',inputs.humidity,0,100,v=>inputs.humidity=v);
 if(all.some(b=>b.type==='ultrasonic')){slider('HC-SR04 · 거리 (cm)',inputs.distance,-1,400,v=>inputs.distance=v);host.append(el('p','muted','-1 = 반사파 없음 · 시리얼 출력 단위 cm'))}if(!analog.length&&!digital.length&&!all.some(b=>['ultrasonic','temperature','dhtTemperature','dhtHumidity'].includes(b.type)))host.append(el('p','muted','센서 블록을 추가하면 이곳에서 핀별 입력을 조절할 수 있습니다.'));host.append(el('p','muted','시뮬레이션만 조절합니다. 실제 USB 입력과 연결되지 않습니다.'))}
 function updateCircuit(){
- let diagramProject=activeMission==='free'||$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
- const preview=activeMission==='free'&&!walkProject(project).length&&$('registeredParts').dataset.tb==='true';
- if(preview){
-  const motor=(channel,en,in1,in2)=>({type:'motor',driver:'TB6612FNG',channel,en,in1,in2,direction:'stop',speed:0});
-  diagramProject={...project,loop:[motor('A','5','7','8'),motor('B','6','4','12')]};
+ const diagramProject=activeMission==='free'||$('wiringMode').value==='mine'?project:answerProject(activeMission,project.board);
+ const signature=activeMission+'|'+JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
+ if(signature!==diagramSignature){
+  const circuit=$('circuit');
+  const empty=activeMission==='free'&&!connectionPlan(diagramProject).components.length;
+  circuit.style.display=empty?'none':'';
+  $('expandCircuit').disabled=empty;
+  if(empty){
+   circuit.replaceChildren();
+   if($('circuitDialog').open)$('circuitDialog').close();
+  }else{
+   const mine=activeMission==='free'||$('wiringMode').value==='mine';
+   renderWiring(circuit,diagramProject,lessons[activeMission].title+(mine?' · 내 블록 연결도':' · 미션 배선 안내'));
+  }
+  diagramSignature=signature;
  }
- const signature=String(preview)+JSON.stringify(diagramProject)+'|'+$('wiringMode').value;
- if(signature!==diagramSignature){renderWiring($('circuit'),diagramProject,preview?'TB6612FNG 기본 배선 예시 · 블록을 넣으면 실제 설정을 표시합니다':lessons[activeMission].title+($('wiringMode').value==='mine'?' · 내 블록 연결도':' · 미션 배선 안내'));diagramSignature=signature;}
  for(const node of $('circuit').querySelectorAll('[data-led-pin]'))node.setAttribute('fill',sim?.outputs[key(project.board,node.dataset.ledPin)]?'#ffbb45':'#8c9ba0');
  for(const arm of $('circuit').querySelectorAll('[data-servo-arm]')){
   const angle=sim?.servos[key(project.board,arm.dataset.servoArm)];
@@ -82,7 +90,6 @@ async function receive(activePort){const decoder=new TextDecoder();let pending='
 async function openSerial(selected,message='── 실제 USB 연결 · 9600 baud ──'){connecting=true;connectionUI();try{await selected.open({baudRate:9600});port=selected;liveChannel.failed=false;writer=port.writable.getWriter();$('monitorSource').value='hardware';appendLog('hardware',message);showLogs();receive(port);return true}catch(error){port=null;throw error}finally{connecting=false;connectionUI()}}
 $('serialConnect').onclick=async()=>{if(port){await disconnect();return}if(!('serial'in navigator)||!window.isSecureContext){toast('Web Serial은 데스크톱 Chrome의 HTTPS 또는 localhost가 필요합니다');return}try{await openSerial(await navigator.serial.requestPort())}catch(err){toast(err.name==='NotFoundError'?'포트 선택을 취소했습니다':'연결 실패: '+err.message)}};
 $('sendForm').onsubmit=async e=>{e.preventDefault();if(liveRunner.task)return;if(!writer){toast('실제 USB를 먼저 연결하세요');return}const text=$('serialText').value;try{await writer.write(new TextEncoder().encode(text+'\n'));appendLog('hardware','> '+text);$('serialText').value=''}catch(err){toast('전송 실패: '+err.message)}};
-$('registeredParts').addEventListener('partschange',()=>queueMicrotask(updateCircuit));
 prepareMissions();initCircuitView();restore();initEditor();refreshParts=initParts({getProject:()=>project,getWorkspace:()=>workspace,baseToolbox:toolbox});refreshParts();initLayout(workspace);render();showLesson();connectionUI();initAiMaker({getBoard:()=>project.board,applyProject:(next,mission)=>{autosave();stop();activeMission=mission;project=next;inputs=freshInputs();logs.sim=[];loadEditor();render();showLesson();autosave();appendLog('sim','── AI 기초 설계 적용 · '+lessons[mission].title+' ──')},toast});initHardwareUpload({getBoard:()=>project.board,stopLive:()=>liveRunner.stop(),getCode:()=>generate(project),getErrors:()=>errors(project),isSerialConnected:()=>Boolean(port),releaseSerial:disconnect,resumeSerial:async selected=>{await new Promise(resolve=>setTimeout(resolve,900));return openSerial(selected,'── 업로드 후 실제 USB 다시 연결 · 9600 baud ──')},selectHardwareMonitor:()=>{$('monitorSource').value='hardware';showLogs()},appendHardwareLog:line=>appendLog('hardware',line),toast});appendLog('sim','준비되었습니다. ▶ 시뮬레이션을 눌러 보세요.');
 
 function prepareMissions(){

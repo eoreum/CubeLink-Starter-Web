@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../preview-1.9.8/part-research.js',import.meta.url),'utf8');
-const {initResearch}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {initResearch}=await import('../preview-1.9.8/part-research.js');
 test('free mode never requests authentication or fetch',async()=>{
  const node=()=>({value:'',children:[],textContent:'',disabled:false,addEventListener(){},replaceChildren(){this.children=[]},append(...v){this.children.push(...v)},focus(){}});
  const ids=Object.fromEntries(['catalogQuery','researchModel','researchFind','researchStatus','researchResults','researchDisconnect'].map(k=>[k,node()]));

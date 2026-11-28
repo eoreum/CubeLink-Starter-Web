@@ -1,3 +1,4 @@
+import {derivePartProfile} from './part-expansion.js';
 export async function publicPartSources(name,request=fetch){
  const term=String(name).trim().replace(/[^\p{L}\p{N} _.-]/gu,' ').slice(0,100).trim();
  if(!term)return [];
@@ -23,7 +24,7 @@ export async function readPublicPartSource(repo,request=fetch){
  const data=await r.json();
  if(data.encoding!=='base64'||typeof data.content!=='string'||data.content.length>250000)throw Error('지원되지 않는 README 형식입니다.');
  const bytes=Uint8Array.from(atob(data.content.replace(/\s/g,'')),c=>c.charCodeAt(0));
- return extractReadmeEvidence(new TextDecoder().decode(bytes));
+ const raw=new TextDecoder().decode(bytes);return {...extractReadmeEvidence(raw),profile:derivePartProfile(raw)};
 }
 export function initResearch(review=()=>{}){
  const $=id=>document.getElementById(id),query=$('catalogQuery'),model=$('researchModel'),find=$('researchFind'),status=$('researchStatus'),box=$('researchResults');
@@ -52,7 +53,7 @@ export function initResearch(review=()=>{}){
      label.textContent=p.name;description.textContent=p.spec||'자료 설명 없음';link.href=p.source;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 확인';add.type='button';add.textContent='자료 후보로 가져오기';add.onclick=async()=>{add.disabled=true;const current=generation;try{
       const info=await readPublicPartSource(p.name);if(current!==generation)return;
       const spec=[p.spec,info.evidence,info.mentions.length?'단자 언급 후보 (미확인): '+info.mentions.join(', '):'',info.libraries.length?'헤더 후보 (설치 여부 미확인): '+info.libraries.join(', '):''].filter(Boolean).join('\n').slice(0,4000);
-      review({name:name.slice(0,40),source:p.source,spec});
+      review({name:name.slice(0,40),source:p.source,spec,profile:info.profile});
      }catch(e){if(current===generation){status.textContent=e.message;review({name:name.slice(0,40),source:p.source,spec:p.spec})}}finally{add.disabled=false}};row.append(label,description,link,' ',add);box.append(row);
     }
    }catch(e){if(seq===generation)status.textContent=e.message}finally{button.disabled=false}

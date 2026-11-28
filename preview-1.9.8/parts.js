@@ -34,6 +34,17 @@ export function validateParts(board,parts){
  for(const p of parts){if(!Object.hasOwn(types,p.type))throw Error('지원하지 않는 부품');for(const [r,k] of types[p.type].roles){const v=p.fields[r],canonical=key(board,v);if(!available(board,k).includes(v)||used.has(canonical))throw Error('핀 충돌 또는 지원하지 않는 핀: '+v);if(servo&&k==='pwm'&&(board==='mega'?['44','45','46']:['9','10']).includes(v))throw Error('Servo 타이머와 PWM 충돌: '+v);used.add(canonical);}}
 }
 export function partToolbox(parts){return parts.filter(p=>types[p.type]?.block).map(p=>{const t=types[p.type],contents=[{kind:'block',type:t.block,fields:p.type==='motor'?{channel:parts.filter(x=>x.type==='motor').indexOf(p)===0?'A':'B',...p.fields}:p.fields}];if(p.type==='dht')contents.push({kind:'block',type:'starter_dhtHumidity',fields:p.fields});if(t.setup||t.input||t.inputMode)contents.unshift({kind:'block',type:'starter_mode',fields:{pin:p.fields.pin,mode:t.inputMode||(t.input?'INPUT_PULLUP':'OUTPUT')}});return {kind:'category',name:p.name,colour:'#087e80',contents};});}
+export function parsePartLibrary(text){
+ if(typeof text!=='string'||text.length>200000)throw Error('부품 자료 파일은 200KB 이하만 지원합니다.');
+ const data=JSON.parse(text);
+ if(data?.version!==1||!Array.isArray(data.parts)||data.parts.length>100)throw Error('지원하지 않는 부품 자료 형식입니다.');
+ return data.parts.map(p=>{
+  if(!p||typeof p.name!=='string'||!p.name.trim()||p.name.length>40||!Object.hasOwn(types,p.type)||typeof p.spec!=='string'||p.spec.length>4000||typeof p.source!=='string'||p.source.length>2000)throw Error('부품 이름 또는 사양을 확인하세요.');
+  if(p.source){const u=new URL(p.source);if(!['https:','http:'].includes(u.protocol)||u.username||u.password)throw Error('제품 자료 주소를 확인하세요.')}
+  return {name:p.name.trim(),type:p.type,source:p.source,spec:p.spec,terminals:terminalNames(p.terminals||[])};
+ });
+}
+export function serializePartLibrary(parts){return JSON.stringify({version:1,parts:parts.map(({name,type,source='',spec='',terminals=[]})=>({name,type,source,spec,terminals}))},null,2)}
 export function initParts({getProject,getWorkspace,baseToolbox}){
  const $=id=>document.getElementById(id),storage='cubelink-part-registry-v1';
  let all={};try{all=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch{}
@@ -43,6 +54,23 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
 
  drawRegistered(host,getProject().mission==='free'?parts.filter(p=>!isTB(p)):[]);const box=baseToolbox();box.contents.push(...partToolbox(parts));getWorkspace().updateToolbox(box);$('partList').replaceChildren();for(const p of parts){const row=document.createElement('div');row.className='part-row';const label=document.createElement('strong');label.textContent=p.name+' · '+(isTB(p)?types.tb6612.label:types[p.type].label)+(types[p.type].library?' · 컴파일 시 '+types[p.type].library+' 자동 준비':'');row.append(label);for(const [role,kind] of types[p.type].roles){const sel=document.createElement('select');sel.setAttribute('aria-label',p.name+' '+role);for(const pin of available(getProject().board,kind)){const opt=document.createElement('option');opt.value=pin;opt.textContent=role+': '+pin;sel.append(opt)}sel.value=p.fields[role];sel.onchange=()=>{const old=p.fields[role];p.fields[role]=sel.value;try{validateParts(getProject().board,parts);save();refresh()}catch(e){p.fields[role]=old;sel.value=old;$('partStatus').textContent=e.message}};row.append(sel)}$('partList').append(row)}};
  const save=()=>localStorage.setItem(storage,JSON.stringify(all));
+ const libraryKey='cubelink-shared-part-library-v1';
+ let shared=[];try{shared=parsePartLibrary(localStorage.getItem(libraryKey)||'{"version":1,"parts":[]}')}catch{}
+ $('partExport').onclick=()=>{
+  const unique=new Map([...shared,...Object.values(all).filter(Array.isArray).flat()].map(p=>[p.name+'|'+p.type,p]));
+  const url=URL.createObjectURL(new Blob([serializePartLibrary([...unique.values()])],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download='CubeLink-Part-Library.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ $('partImport').onclick=()=>$('partImportFile').click();
+ $('partImportFile').onchange=async e=>{try{
+  const file=e.target.files[0];if(!file)return;if(file.size>200000)throw Error('파일이 너무 큽니다.');
+  const incoming=parsePartLibrary(await file.text()),merged=new Map(shared.map(p=>[p.name+'|'+p.type,p]));
+  for(const p of incoming){const k=p.name+'|'+p.type;if(!merged.has(k))merged.set(k,p)}
+  if(merged.size>100)throw Error('공유 부품 목록은 최대 100개입니다.');
+  const next=[...merged.values()];localStorage.setItem(libraryKey,serializePartLibrary(next));shared=next;
+  $('partStatus').textContent='부품 자료 '+incoming.length+'개 불러오기 완료 · AI와 함께하기에서 제품명을 검색하고 사양을 확인하세요.';showMatches();
+ }catch(err){$('partStatus').textContent=err.message}finally{e.target.value=''}};
+
  for(const [id,t] of Object.entries(types)){const o=document.createElement('option');o.value=id;o.textContent=t.label;$('partType').append(o)}
  let draftUrl='', draftSpec='', draftPins=[],manual=false;
  function resetDraft(){draftUrl='';draftSpec='';draftPins=[];manual=false;$('sourceNote').textContent='';$('manualSource').value='';$('manualSpec').value='';$('manualPins').value='';$('manualConfirmed').checked=false;$('manualPartDetails').open=false;$('partStatus').textContent='';$('partName').value='';$('partType').value='custom'}
@@ -106,7 +134,7 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
  function showMatches(){
   const query=normalize($('catalogQuery').value);
-  const documented=matchDocumented($('catalogQuery').value);const matches=[...documented,...catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query)&&!documented.some(d=>d.type===p.type))];
+  const imported=query?shared.filter(p=>normalize(p.name).includes(query)||query.includes(normalize(p.name))).map(p=>({...p,model:p.name})):[];const documented=[...imported,...matchDocumented($('catalogQuery').value).filter(p=>!imported.some(i=>i.name===p.name))];const matches=[...documented,...catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query)&&!documented.some(d=>d.type===p.type))];
   const box=$('catalogResults');
   box.replaceChildren();
   $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. ‘목록에 없는 부품 직접 추가’에서 제품 사양을 입력하고 호환 구동 방식을 선택하세요.';

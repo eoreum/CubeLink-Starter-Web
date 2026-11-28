@@ -1,4 +1,4 @@
-import {motorChannels,walkProject,expression,pins,pwmPins,statement} from './engine.js?v=tb-driver1';
+import {motorChannels,walkProject,expression,pins,pwmPins,statement} from './engine.js?v=ds18-1';
 
 const compareFromBlockly={EQ:'==',NEQ:'!=',LT:'<',LTE:'<=',GT:'>',GTE:'>='};
 const compareToBlockly=Object.fromEntries(Object.entries(compareFromBlockly).map(([key,value])=>[value,key]));
@@ -30,7 +30,7 @@ export function registerBlocks(B,getBoard){
  B.Blocks.starter_if_else={init(){this.appendValueInput('CONDITION').setCheck('Boolean').appendField('만약');this.appendStatementInput('THEN').appendField('이라면');this.appendStatementInput('ELSE').appendField('아니면');this.setPreviousStatement(true);this.setNextStatement(true);this.setColour('#5C81A6');}};
 
  const sensorBlock=(type,label,analog=true,colour='#F39C12')=>{B.Blocks['starter_'+type]={init(){this.appendDummyInput().appendField(label).appendField(pinField(analog),'pin');this.setOutput(true,type==='pir'||type==='tilt'?'Boolean':'Number');this.setColour(colour);}}};
- sensorBlock('digitalRead','디지털 핀',false,'#E74C3C');sensorBlock('button','버튼 핀',false);sensorBlock('analogRead','아날로그 핀');sensorBlock('ldr','조도 센서(LDR) 핀');sensorBlock('pot','가변저항 핀');sensorBlock('temperature','TMP36 온도(°C) 핀');sensorBlock('sound','소리 센서 핀');sensorBlock('pir','PIR 움직임 핀',false);sensorBlock('tilt','기울기 센서 핀',false);
+ sensorBlock('ds18Temperature','DS18B20 온도(°C) 핀',false);sensorBlock('digitalRead','디지털 핀',false,'#E74C3C');sensorBlock('button','버튼 핀',false);sensorBlock('analogRead','아날로그 핀');sensorBlock('ldr','조도 센서(LDR) 핀');sensorBlock('pot','가변저항 핀');sensorBlock('temperature','TMP36 온도(°C) 핀');sensorBlock('sound','소리 센서 핀');sensorBlock('pir','PIR 움직임 핀',false);sensorBlock('tilt','기울기 센서 핀',false);
  B.Blocks.starter_dhtTemperature={init(){this.appendDummyInput().appendField('DHT11 온도(°C) 핀').appendField(pinField(false),'pin');this.setOutput(true,'Number');this.setColour('#F39C12');}};
  B.Blocks.starter_dhtHumidity={init(){this.appendDummyInput().appendField('DHT11 습도(%) 핀').appendField(pinField(false),'pin');this.setOutput(true,'Number');this.setColour('#F39C12');}};
  B.Blocks.starter_joystickAxis={init(){this.appendDummyInput().appendField('조이스틱').appendField(new B.FieldDropdown([['X축','X'],['Y축','Y']]),'axis').appendField('아날로그 핀').appendField(pinField(true),'pin');this.setOutput(true,'Number');this.setColour('#9B59B6');}};
@@ -46,7 +46,7 @@ function readExpression(block){
  if(block.type==='logic_compare')return expression('compare',{operator:compareFromBlockly[block.getFieldValue('OP')]||'==',left:readExpression(block.getInputTargetBlock('A')),right:readExpression(block.getInputTargetBlock('B'))});
  if(block.type==='logic_operation')return expression('logic',{operator:block.getFieldValue('OP')||'AND',a:readExpression(block.getInputTargetBlock('A')),b:readExpression(block.getInputTargetBlock('B'))});
  const type=block.type.replace('starter_','');
- if(['digitalRead','button','analogRead','ldr','pot','temperature','dhtTemperature','dhtHumidity','sound','pir','tilt'].includes(type))return expression(type,{pin:block.getFieldValue('pin')});
+ if(['digitalRead','button','analogRead','ldr','pot','temperature','dhtTemperature','dhtHumidity','ds18Temperature','sound','pir','tilt'].includes(type))return expression(type,{pin:block.getFieldValue('pin')});
  if(type==='joystickAxis')return expression(type,{pin:block.getFieldValue('pin'),axis:block.getFieldValue('axis')});
  if(type==='ultrasonic')return expression(type,{trig:block.getFieldValue('trig'),echo:block.getFieldValue('echo')});
  if(type==='map')return expression(type,{value:readExpression(block.getInputTargetBlock('VALUE')),inMin:Number(block.getFieldValue('inMin')),inMax:Number(block.getFieldValue('inMax')),outMin:Number(block.getFieldValue('outMin')),outMax:Number(block.getFieldValue('outMax'))});
@@ -120,5 +120,5 @@ export function toolbox(){return {kind:'categoryToolbox',contents:[
  {kind:'category',name:'DC 모터 (TB6612FNG)',colour:'#098b88',contents:[{kind:'block',type:'starter_tb6612'}]},
  {kind:'category',name:'DC 모터 (L298N)',colour:'#098b88',contents:[{kind:'block',type:'starter_motor'}]},
  {kind:'category',name:'서보모터',colour:'#8356a2',contents:[{kind:'block',type:'starter_servo'}]},
- {kind:'category',name:'센서 · 아날로그',colour:'#F39C12',contents:['analogRead','pot','ldr','temperature','dhtTemperature','dhtHumidity','sound','pir','tilt','joystickAxis','ultrasonic','map'].map(type=>({kind:'block',type:'starter_'+type}))}
+ {kind:'category',name:'센서 · 아날로그',colour:'#F39C12',contents:['analogRead','pot','ldr','temperature','dhtTemperature','dhtHumidity','ds18Temperature','sound','pir','tilt','joystickAxis','ultrasonic','map'].map(type=>({kind:'block',type:'starter_'+type}))}
  ]}}

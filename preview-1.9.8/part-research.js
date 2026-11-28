@@ -29,9 +29,9 @@ export async function readPublicPartSource(repo,request=fetch){
 export function initResearch(review=()=>{}){
  const $=id=>document.getElementById(id),query=$('catalogQuery'),model=$('researchModel'),find=$('researchFind'),status=$('researchStatus'),box=$('researchResults');
  if(model)model.value='free';
- let generation=0;function reset(){generation++;box.replaceChildren();status.textContent=''}
+ let generation=0;function reset(){generation++;box.replaceChildren();status.textContent='';find.disabled=false}
  query.addEventListener('input',reset);
- function search(){
+ async function search(){
   reset();
   const name=query.value.trim();
   if(!name){query.focus();status.textContent='제품명을 입력하세요.';return}
@@ -42,9 +42,9 @@ export function initResearch(review=()=>{}){
    link.target='_blank';link.rel='noopener noreferrer';link.textContent=label;
    const row=document.createElement('p');row.append(link);box.append(row);
   }
-  const button=document.createElement('button');button.type='button';button.textContent='공개 아두이노 자료 자동 검색';
+  const button=document.createElement('button');button.type='button';button.textContent='공개 자료 다시 검색';
   button.onclick=async()=>{
-   const seq=generation;button.disabled=true;status.textContent='공개 자료 검색 중…';
+   const seq=generation;button.disabled=true;find.disabled=true;while(box.children.length>3){box.lastElementChild.remove()}status.textContent='공개 자료 검색 중…';
    try{
     const matches=await publicPartSources(name);if(seq!==generation)return;
     status.textContent=matches.length?'검색된 자료 후보입니다. 제품과 일치하는지 확인하세요.':'공개 자료 후보가 없습니다. 일반 검색을 이용하세요.';
@@ -56,8 +56,8 @@ export function initResearch(review=()=>{}){
       review({name:name.slice(0,40),source:p.source,spec,profile:info.profile});
      }catch(e){if(current===generation){status.textContent=e.message;review({name:name.slice(0,40),source:p.source,spec:p.spec})}}finally{add.disabled=false}};row.append(label,description,link,' ',add);box.append(row);
     }
-   }catch(e){if(seq===generation)status.textContent=e.message}finally{button.disabled=false}
-  };box.append(button);
+   }catch(e){if(seq===generation)status.textContent=e.message}finally{button.disabled=false;if(seq===generation)find.disabled=false}
+  };box.append(button);await button.onclick();
  }
  find.onclick=search;
  query.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();search()}});

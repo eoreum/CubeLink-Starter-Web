@@ -1,5 +1,5 @@
 import {matchDocumented} from './part-catalog.js?v=1';
-import {initResearch} from './part-research.js?v=public-source1';
+import {initResearch} from './part-research.js?v=readme-evidence1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
@@ -156,7 +156,7 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
  }
  initResearch(p=>{
   $('manualPartOpen').click();$('partName').value=p.name;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('partType').value='custom';
-  $('sourceNote').textContent='공개 자료 후보입니다. 단자와 전기적 사양은 원문을 확인한 후 입력하세요.';
+  $('sourceNote').textContent='공개 README에서 추출한 자료 후보입니다. 단자 언급 및 라이브러리 헤더는 검증되지 않았습니다. 원문과 실물을 확인한 뒤 실제 단자와 구동 유형을 입력하세요.';
  });
  $('catalogQuery').oninput=showMatches;
  showMatches();

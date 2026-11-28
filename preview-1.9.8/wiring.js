@@ -1,4 +1,4 @@
-import {validateModuleMap} from './module-pinmap.js';
+import {validateModuleMap} from './module-pinmap.js?v=expansion1';
 import {motorChannels,boards,key,errors,walkProject} from './engine.js?v=tb-driver1';
 
 const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
@@ -6,7 +6,7 @@ const pinName=p=>String(p).startsWith('A')?String(p):'D'+p;
 // and allocated pin(s) match a connected block. Never infer wiring from a name.
 export function connectedPart(project,node,registered=[]){
  const compatible={analogRead:'analog',pot:'pot',ldr:'ldr',sound:'sound',temperature:'temperature',pir:'pir',tilt:'tilt',dhtTemperature:'dht',dhtHumidity:'dht',servo:'servo',ultrasonic:'ultrasonic',button:'button',write:'led',motor:'motor'};
- const type=compatible[node.type];
+ const type=node.type==='digitalRead'?'digitalModule':compatible[node.type];
  if(!type||node.driver==='TB6612FNG')return '';
  const roles=type==='ultrasonic'?['trig','echo']:type==='motor'?['en','in1','in2']:['pin'];
  const matches=registered.filter(p=>p.type===type&&typeof p.name==='string'&&p.name.trim()&&roles.every(r=>p.fields?.[r]!==undefined&&node[r]!==undefined&&key(project.board,p.fields[r])===key(project.board,node[r])));
@@ -36,7 +36,8 @@ export function connectionPlan(project,registered=[]) {
     if(b.type==='ldr')add('ldr-'+b.pin,'조도 센서 · LDR 분압',[net('5V','10kΩ 고정 저항의 한쪽','#d55959'),net(b.pin,'저항과 LDR의 접점','#27959b'),net('GND','LDR의 다른 쪽','#405768')],'5V — 10kΩ — [접점: '+b.pin+'] — LDR — GND. 이 구성은 어두울수록 ADC가 작아집니다.','ldr');
     if(b.type==='pot')add('pot-'+b.pin,'가변저항',[net('5V','한쪽 끝 단자','#d55959'),net(b.pin,'가운데 단자 (와이퍼)','#27959b'),net('GND','반대쪽 끝 단자','#405768')],'보통 10kΩ 가변저항. 양 끝 방향을 바꾸면 값이 증가하는 방향도 바뀝니다.','pot');
     if(b.type==='analogRead')add('analog-'+b.pin,'아날로그 센서 모듈',[...supply,net(b.pin,'OUT / 신호 (0~5V)','#27959b')],'모듈의 실제 OUT/VCC/GND 표기를 확인하세요. 5V 보드 입력 범위를 넘기지 마세요.','analog');
-    if(['button','digitalRead'].includes(b.type)&&!outputs.has(key(project.board,b.pin))){const pullup=all.some(x=>x.type==='mode'&&key(project.board,x.pin)===key(project.board,b.pin)&&x.mode==='INPUT_PULLUP');
+    if(b.type==='digitalRead'&&connectedPart(project,b,registered)?.pinMap&&!outputs.has(key(project.board,b.pin)))add('digitalmodule-'+b.pin,'디지털 신호 센서 모듈',[...supply,net(pinName(b.pin),'OUT','#27959b')],'5V 호환 확인된 디지털 출력 센서 모듈. INPUT 모드를 사용하세요.','analog');
+    else if(['button','digitalRead'].includes(b.type)&&!outputs.has(key(project.board,b.pin))){const pullup=all.some(x=>x.type==='mode'&&key(project.board,x.pin)===key(project.board,b.pin)&&x.mode==='INPUT_PULLUP');
       add('button-'+b.pin,'버튼 / 디지털 입력',pullup?[net(pinName(b.pin),'버튼의 접점 1'),net('GND','버튼의 접점 2','#405768')]:[net('5V','버튼 접점 1','#d55959'),net(pinName(b.pin),'버튼 접점 2 + 10kΩ 저항 한쪽'),net('GND','10kΩ 저항 다른 쪽','#405768')],pullup?'INPUT_PULLUP: 누르면 0, 놓으면 1. 4핀 버튼의 서로 다른 접점을 사용하세요.':'INPUT 외부 풀다운 구성: 놓으면 0, 누르면 1. 외부 10kΩ 저항을 생략하면 입력이 불안정할 수 있습니다.','button');}
     if(b.type==='ultrasonic')add('sonar-'+b.trig+'-'+b.echo,'HC-SR04 초음파 센서',[...supply,net(pinName(b.trig),'TRIG (출력)','#c28a2d'),net(pinName(b.echo),'ECHO (입력)','#27959b')],'센서에 인쇄된 VCC / TRIG / ECHO / GND를 기준으로 연결하세요. 무응답은 -1cm입니다.','sonar');
     if(b.type==='temperature')add('temperature-'+b.pin,'TMP36 온도 센서',[...supply,net(b.pin,'VOUT / 온도 신호','#27959b')],'평평한 면을 바라볼 때 핀 순서를 반드시 부품 데이터시트와 대조하세요.','analog');

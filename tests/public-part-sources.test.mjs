@@ -1,4 +1,4 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
-const source=await readFile(new URL('../preview-1.9.8/part-research.js',import.meta.url),'utf8');const {publicPartSources}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const source=await readFile(new URL('../preview-1.9.8/part-research.js',import.meta.url),'utf8');const {publicPartSources}=await import('../preview-1.9.8/part-research.js');
 test('public repository search requires no credentials and returns candidates only',async()=>{const found=await publicPartSources('A4988',async(url,opts)=>{assert.equal(new URL(url).hostname,'api.github.com');assert.equal(opts.credentials,'omit');assert.equal(opts.headers.Authorization,undefined);return {ok:true,json:async()=>({items:[{full_name:'example/driver',description:'candidate'},{full_name:'bad/<script>'}]})}});assert.deepEqual(found,[{name:'example/driver',source:'https://github.com/example/driver',spec:'candidate',libraryCandidate:true}])});
 test('rate limit is reported',async()=>assert.rejects(publicPartSources('A4988',async()=>({ok:false,status:429})),/한도/));

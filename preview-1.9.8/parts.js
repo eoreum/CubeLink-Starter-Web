@@ -1,6 +1,6 @@
-import {moduleTypes,validateModuleMap} from './module-pinmap.js';
+import {moduleTypes,validateModuleMap} from './module-pinmap.js?v=expansion1';
 import {matchDocumented} from './part-catalog.js?v=1';
-import {initResearch} from './part-research.js?v=readme-evidence1';
+import {initResearch} from './part-research.js?v=expansion1';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
 export const types={
@@ -8,6 +8,7 @@ export const types={
  custom:{label:'신규 모델 · 단자도 등록 (드라이버 검증 대기)',roles:[]},
  led:{label:'LED / 디지털 출력',roles:[['pin','digital']],block:'starter_write',setup:true},
  button:{label:'버튼 / 디지털 입력',roles:[['pin','digital']],block:'starter_button',input:true},
+ digitalModule:{label:'디지털 신호 출력 센서 모듈',roles:[['pin','digital']],block:'starter_digitalRead',inputMode:'INPUT'},
  analog:{label:'아날로그 센서 / 가변저항',roles:[['pin','analog']],block:'starter_analogRead'},
  dht:{label:'DHT11 온습도 센서',roles:[['pin','digital']],block:'starter_dhtTemperature',library:'DHT sensor library'},
  servo:{library:'Servo',label:'서보모터',roles:[['pin','digital']],block:'starter_servo'},
@@ -163,7 +164,7 @@ export function initParts({getProject,getWorkspace,baseToolbox,onPartsChanged=()
  }
  initResearch(p=>{
   $('manualPartOpen').click();$('partName').value=p.name;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('partType').value='custom';
-  $('sourceNote').textContent='공개 README에서 추출한 자료 후보입니다. 단자 언급 및 라이브러리 헤더는 검증되지 않았습니다. 원문과 실물을 확인한 뒤 실제 단자와 구동 유형을 입력하세요.';
+  if(p.profile){const q=p.profile;$('partType').value=q.type;$('manualPins').value=q.terminals.join(', ');$('manualSpec').value=(p.spec+'\n'+q.evidence).slice(0,4000);showMap();$('mapPower').value=q.pinMap.power;$('mapGround').value=q.pinMap.ground;$('mapSignal').value=q.pinMap.signal;$('mapEnabled').checked=true;$('sourceNote').textContent='공개 자료에 명시된 공통 구동 방식과 단자 역할을 자동으로 채웠습니다. 실제 제품과 일치하면 확인 후 등록하세요.';}else $('sourceNote').textContent='자동 분류에 필요한 명시적 사양이 부족합니다. 임의 구동 블록을 생성하지 않습니다.';
  });
  $('catalogQuery').oninput=showMatches;
  showMatches();

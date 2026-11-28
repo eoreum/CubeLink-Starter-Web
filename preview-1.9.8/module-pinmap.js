@@ -1,4 +1,4 @@
-export const moduleTypes=['analog','sound','pir','dht'];
+export const moduleTypes=['analog','sound','pir','dht','digitalModule'];
 export function validateModuleMap(type,terminals,map){
  if(map==null)return undefined;
  if(!moduleTypes.includes(type)||!map||typeof map!=='object'||!Array.isArray(terminals))throw Error('이 부품 유형은 3단자 모듈 매핑을 지원하지 않습니다.');

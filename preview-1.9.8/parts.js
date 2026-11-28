@@ -1,3 +1,4 @@
+import {matchDocumented} from './part-catalog.js?v=1';
 import {initResearch} from './part-research.js?v=no-auth2';
 import {terminalNames,drawRegistered} from './part-schema.js';
 import {pins,pwmPins,key,walkProject} from './engine.js?v=tb-driver1';
@@ -105,15 +106,18 @@ export function initParts({getProject,getWorkspace,baseToolbox}){
  const normalize=value=>value.toLowerCase().replace(/[\s-]/g,'');
  function showMatches(){
   const query=normalize($('catalogQuery').value);
-  const matches=catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query));
+  const documented=matchDocumented($('catalogQuery').value);const matches=[...documented,...catalog.filter(p=>normalize(p.name+' '+(p.aliases||'')).includes(query)&&!documented.some(d=>d.type===p.type))];
   const box=$('catalogResults');
   box.replaceChildren();
   $('catalogStatus').textContent=matches.length?'':'기본 목록에 없는 부품입니다. ‘목록에 없는 부품 직접 추가’에서 제품 사양을 입력하고 호환 구동 방식을 선택하세요.';
   for(const p of matches){
    const button=document.createElement('button');
    button.type='button';
-   button.textContent=p.name+' 추가 · '+(p.type==='custom'?'단자도만 지원':'블록 지원');
+   button.textContent=p.name+(p.model?' · 사양 불러오기':' 추가')+' · '+(p.type==='custom'?'단자도만 지원':'블록 지원');
    button.onclick=()=>{
+    if(p.model){
+     $('manualPartOpen').click();$('partName').value=p.name;$('partType').value=p.type;$('manualSource').value=p.source;$('manualSpec').value=p.spec;$('manualPins').value=p.terminals.join(', ');$('manualConfirmed').checked=false;return;
+    }
     if(getProject().mission!=='free')$('freeMode').click();
     try{
      $('catalogStatus').textContent=register(p.name,p.type,p.source||'',p.spec||'',p.terminals||[]);
